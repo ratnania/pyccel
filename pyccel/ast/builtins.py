@@ -666,3 +666,10 @@ builtin_functions_dict = {
     'min'      : PythonMin,
     'not'      : PyccelNot,
 }
+
+ComplexClass = ClassDef('cmplx',
+        methods=[
+            FunctionDef('real',[],[],body=[],
+                decorators={'property':'property', 'f90_wrapper':PythonReal}),
+            FunctionDef('imag',[],[],body=[],
+                decorators={'f90_wrapper':PythonImag})])
