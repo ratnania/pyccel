@@ -901,17 +901,17 @@ class NumpyMax(NumpyUfuncUnary):
 NumpyArrayClass = ClassDef('numpy.ndarray',
         methods=[
             FunctionDef('shape',[],[],body=[],
-                decorators={'property':'property', 'numpy_wrapper':Shape}),
+                decorators={'property':'property', 'f90_wrapper':Shape}),
             FunctionDef('sum',[],[],body=[],
-                decorators={'numpy_wrapper':NumpySum}),
+                decorators={'f90_wrapper':NumpySum}),
             FunctionDef('min',[],[],body=[],
-                decorators={'numpy_wrapper':NumpyMin}),
+                decorators={'f90_wrapper':NumpyMin}),
             FunctionDef('max',[],[],body=[],
-                decorators={'numpy_wrapper':NumpyMax}),
+                decorators={'f90_wrapper':NumpyMax}),
             FunctionDef('imag',[],[],body=[],
-                decorators={'property':'property', 'numpy_wrapper':NumpyImag}),
+                decorators={'property':'property', 'f90_wrapper':NumpyImag}),
             FunctionDef('real',[],[],body=[],
-                decorators={'property':'property', 'numpy_wrapper':NumpyReal})])
+                decorators={'property':'property', 'f90_wrapper':NumpyReal})])
 
 #==============================================================================
 # TODO split numpy_functions into multiple dictionaries following
