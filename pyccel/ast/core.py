@@ -2635,13 +2635,29 @@ class ValuedVariable(Variable):
         return '{0}={1}'.format(name, value)
 
 class TupleVariable(Variable):
+    """Abstract class representing tuple variables in the code"""
 
-    """Represents a tuple variable in the code.
+class HomogeneousTupleVariable(TupleVariable):
+
+    """Represents a homogeneous tuple variable in the code.
+    This is similar to a variable but is treated differently
+    for certain operators (e.g. Mul)
+    """
+
+class InhomogeneousTupleVariable(TupleVariable):
+
+    """Represents an inhomogeneous tuple variable in the code.
 
     Parameters
     ----------
     arg_vars: Iterable
         Multiple variables contained within the tuple
+        This is necessary to handle inhomogenous shapes
+
+    name    : str
+        The name of the variable
+
+    *args, **kwargs : See Variable
 
     Examples
     --------
@@ -2653,28 +2669,20 @@ class TupleVariable(Variable):
     n
     """
 
-    def __new__(cls, arg_vars, dtype, name, *args, **kwargs):
+    def __new__(cls, arg_vars, name, *args, **kwargs):
 
         # if value is not given, we set it to Nil
         # we also remove value from kwargs,
         # since it is not a valid argument for Variable
 
-        return Variable.__new__(cls, dtype, name, *args, **kwargs)
+        return Variable.__new__(cls, NativeGeneric(), name, *args, **kwargs)
 
-    def __init__(self, arg_vars, dtype, name, *args, **kwargs):
+    def __init__(self, arg_vars, name, *args, **kwargs):
         self._vars = tuple(arg_vars)
-        self._inconsistent_shape = not all(arg_vars[0].shape==a.shape   for a in arg_vars[1:])
-        self._is_homogeneous = not dtype is NativeGeneric()
-        Variable.__init__(self, dtype, name, *args, **kwargs)
+        Variable.__init__(self, NativeGeneric(), name, *args, **kwargs)
 
     def get_vars(self):
-        if self._is_homogeneous:
-            indexed_var = IndexedVariable(self, dtype=self.dtype, shape=self.shape,
-                prec=self.precision, order=self.order, rank=self. rank)
-            args = [Slice(None,None)]*(self.rank-1)
-            return [indexed_var[[i] + args] for i in range(len(self._vars))]
-        else:
-            return self._vars
+        return self._vars
 
     def get_var(self, variable_idx):
         return self._vars[variable_idx]
@@ -2692,42 +2700,6 @@ class TupleVariable(Variable):
 
     def __len__(self):
         return len(self._vars)
-
-    @property
-    def inconsistent_shape(self):
-        return self._inconsistent_shape
-
-    @property
-    def is_homogeneous(self):
-        return self._is_homogeneous
-
-    @is_homogeneous.setter
-    def is_homogeneous(self, is_homogeneous):
-        self._is_homogeneous = is_homogeneous
-
-    @Variable.allocatable.setter
-    def allocatable(self, allocatable):
-        if not isinstance(allocatable, bool):
-            raise TypeError('allocatable must be a boolean.')
-        self._allocatable = allocatable
-        for var in self._vars:
-            var.allocatable = allocatable
-
-    @Variable.is_pointer.setter
-    def is_pointer(self, is_pointer):
-        if not isinstance(is_pointer, bool):
-            raise TypeError('is_pointer must be a boolean.')
-        self._is_pointer = is_pointer
-        for var in self._vars:
-            var.is_pointer = is_pointer
-
-    @Variable.is_target.setter
-    def is_target(self, is_target):
-        if not isinstance(is_target, bool):
-            raise TypeError('is_target must be a boolean.')
-        self._is_target = is_target
-        for var in self._vars:
-            var.is_target = is_target
 
 class Constant(ValuedVariable, PyccelAstNode):
 
