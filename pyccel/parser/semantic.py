@@ -30,7 +30,7 @@ from pyccel.ast.core import Allocate, Deallocate
 from pyccel.ast.core import Constant
 from pyccel.ast.core import Nil
 from pyccel.ast.core import Variable
-from pyccel.ast.core import TupleVariable
+from pyccel.ast.core import TupleVariable, HomogeneousTupleVariable, InHomogeneousTupleVariable
 from pyccel.ast.core import DottedName, DottedVariable
 from pyccel.ast.core import Assign, AliasAssign, SymbolicAssign
 from pyccel.ast.core import AugAssign, CodeBlock
@@ -881,7 +881,7 @@ class SemanticParser(BasicParser):
 
         args = tuple(args)
 
-        if isinstance(var, TupleVariable) and not var.is_homogeneous:
+        if isinstance(var, InhomogeneousTupleVariable):
 
             arg = args[0]
 
@@ -1321,20 +1321,23 @@ class SemanticParser(BasicParser):
         """
 
         if isinstance(rhs, (TupleVariable, PythonTuple, PythonList)):
-            elem_vars = []
-            for i,r in enumerate(rhs):
-                elem_name = self.get_new_name( name + '_' + str(i) )
-                elem_d_lhs = self._infere_type( r )
+            if rhs.is_homogeneous:
+                lhs = HomogeneousTupleVariable(dtype, name, **d_lhs)
+            else:
+                elem_vars = []
+                for i,r in enumerate(rhs):
+                    elem_name = self.get_new_name( name + '_' + str(i) )
+                    elem_d_lhs = self._infere_type( r )
 
-                self._ensure_target( r, elem_d_lhs )
+                    self._ensure_target( r, elem_d_lhs )
 
-                elem_dtype = elem_d_lhs.pop('datatype')
+                    elem_dtype = elem_d_lhs.pop('datatype')
 
-                var = self._create_variable(elem_name, elem_dtype, r, elem_d_lhs)
-                elem_vars.append(var)
+                    var = self._create_variable(elem_name, elem_dtype, r, elem_d_lhs)
+                    elem_vars.append(var)
 
-            d_lhs['is_pointer'] = any(v.is_pointer for v in elem_vars)
-            lhs = TupleVariable(elem_vars, dtype, name, **d_lhs)
+                d_lhs['is_pointer'] = any(v.is_pointer for v in elem_vars)
+                lhs = InhomogeneousTupleVariable(elem_vars, dtype, name, **d_lhs)
 
         else:
             lhs = Variable(dtype, name, **d_lhs)
