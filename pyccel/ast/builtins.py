@@ -317,8 +317,8 @@ class PythonTuple(Expr, PyccelAstNode):
         is_homogeneous = all(a.dtype is not NativeGeneric() and \
                              args[0].dtype == a.dtype and \
                              args[0].rank  == a.rank  and \
-                             args[0].order == a.order for a in args[1:])
-        self._inconsistent_shape = not all(args[0].shape==a.shape   for a in args[1:])
+                             args[0].order == a.order and \
+                             args[0].shape == a.shape for a in args[1:])
         self._is_homogeneous = is_homogeneous
         if is_homogeneous:
             integers  = [a for a in args if a.dtype is NativeInteger()]
@@ -376,10 +376,6 @@ class PythonTuple(Expr, PyccelAstNode):
     @property
     def is_homogeneous(self):
         return self._is_homogeneous
-
-    @property
-    def inconsistent_shape(self):
-        return self._inconsistent_shape
 
 #==============================================================================
 class PythonLen(Function, PyccelAstNode):
