@@ -305,7 +305,6 @@ class PythonTuple(Expr, PyccelAstNode):
     """ Represents a call to Python's native tuple() function.
     """
     _iterable        = True
-    _is_homogeneous  = False
     _order = 'C'
 
     def __new__(cls, *args):
@@ -314,55 +313,24 @@ class PythonTuple(Expr, PyccelAstNode):
     def __init__(self, *args):
         if self.stage == 'syntactic' or len(args) == 0:
             return
-        is_homogeneous = all(a.dtype is not NativeGeneric() and \
-                             args[0].dtype == a.dtype and \
-                             args[0].rank  == a.rank  and \
-                             args[0].order == a.order for a in args[1:])
-        self._inconsistent_shape = not all(args[0].shape==a.shape   for a in args[1:])
-        self._is_homogeneous = is_homogeneous
-        if is_homogeneous:
-            integers  = [a for a in args if a.dtype is NativeInteger()]
-            reals     = [a for a in args if a.dtype is NativeReal()]
-            complexes = [a for a in args if a.dtype is NativeComplex()]
-            bools     = [a for a in args if a.dtype is NativeBool()]
-            strs      = [a for a in args if a.dtype is NativeString()]
-            if strs:
-                self._dtype = NativeString()
-                self._rank  = 0
-                self._shape = ()
-            else:
-                if complexes:
-                    self._dtype     = NativeComplex()
-                    self._precision = max(a.precision for a in complexes)
-                elif reals:
-                    self._dtype     = NativeReal()
-                    self._precision = max(a.precision for a in reals)
-                elif integers:
-                    self._dtype     = NativeInteger()
-                    self._precision = max(a.precision for a in integers)
-                elif bools:
-                    self._dtype     = NativeBool()
-                    self._precision  = max(a.precision for a in bools)
-                else:
-                    raise TypeError('cannot determine the type of {}'.format(self))
+        self._rank      = 1
+        self._dtype     = NativeGeneric()
+        self._precision = 0
+        self._shape     = (LiteralInteger(len(args)), )
 
-
-                shapes     = [a.shape for a in args]
-                self._rank = max(a.rank for a in args) + 1
-                if all(sh is not None for sh in shapes):
-                    self._shape = (LiteralInteger(len(args)), ) + shapes[0]
-                    self._rank  = len(self._shape)
-
+    def __getitem__(self,items):
+        if isinstance(items, (list, tuple)):
+            i = items[0]
+            additional_items = items[1:]
         else:
-            self._rank      = max(a.rank for a in args) + 1
-            self._dtype     = NativeGeneric()
-            self._precision = 0
-            self._shape     = (LiteralInteger(len(args)), ) + args[0].shape
-
-    def __getitem__(self,i):
+            i = items
+            additional_items = []
         if isinstance(i, LiteralInteger):
             i = i.p
-        return self._args[i]
+        if additional_items:
+            return self._args[i][additional_items]
+        else:
+            return self._args[i]
 
     def __add__(self,other):
         return PythonTuple(*(self._args + other._args))
@@ -372,14 +340,6 @@ class PythonTuple(Expr, PyccelAstNode):
 
     def __len__(self):
         return len(self._args)
-
-    @property
-    def is_homogeneous(self):
-        return self._is_homogeneous
-
-    @property
-    def inconsistent_shape(self):
-        return self._inconsistent_shape
 
 #==============================================================================
 class PythonLen(Function, PyccelAstNode):
