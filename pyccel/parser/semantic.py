@@ -1295,7 +1295,7 @@ class SemanticParser(BasicParser):
             bounding_box=(self._current_fst_node.lineno, self._current_fst_node.col_offset),
             severity='fatal', blocker=self.blocking)
 
-    def _create_variable(self, name, dtype, rhs, d_lhs):
+    def _create_variable(self, name, rhs, d_lhs):
         """
         Create a new variable. In most cases this is just a call to
         Variable.__init__
@@ -1309,9 +1309,6 @@ class SemanticParser(BasicParser):
         name : str
             The name of the new variable
 
-        dtype : DataType
-            The data type of the new variable
-
         rhs : Variable
             The value assigned to the lhs. This is required to call
             self._infere_type recursively for tuples
@@ -1319,6 +1316,7 @@ class SemanticParser(BasicParser):
         d_lhs : dict
             Dictionary of properties for the new Variable
         """
+        d_lhs = d_lhs.copy()
 
         if isinstance(rhs, (TupleVariable, PythonTuple, PythonList)):
             elem_vars = []
@@ -1328,15 +1326,15 @@ class SemanticParser(BasicParser):
 
                 self._ensure_target( r, elem_d_lhs )
 
-                elem_dtype = elem_d_lhs.pop('datatype')
-
-                var = self._create_variable(elem_name, elem_dtype, r, elem_d_lhs)
+                var = self._create_variable(elem_name, r, elem_d_lhs)
                 elem_vars.append(var)
 
             d_lhs['is_pointer'] = any(v.is_pointer for v in elem_vars)
+            dtype = d_lhs.pop('datatype')
             lhs = TupleVariable(elem_vars, dtype, name, **d_lhs)
 
         else:
+            dtype = d_lhs.pop('datatype')
             lhs = Variable(dtype, name, **d_lhs)
 
         return lhs
@@ -1402,7 +1400,6 @@ class SemanticParser(BasicParser):
         if isinstance(lhs, Symbol):
 
             name = lhs.name
-            dtype = d_var.pop('datatype')
 
             d_lhs = d_var.copy()
             # ISSUES #177: lhs must be a pointer when rhs is allocatable array
@@ -1425,7 +1422,7 @@ class SemanticParser(BasicParser):
                             d_lhs.update(allows_negative_indexes=True)
 
                 # Create new variable
-                lhs = self._create_variable(name, dtype, rhs, d_lhs)
+                lhs = self._create_variable(name, rhs, d_lhs)
 
                 # Add variable to scope
                 self.insert_variable(lhs, name=lhs.name)
@@ -1555,7 +1552,6 @@ class SemanticParser(BasicParser):
 
         elif isinstance(lhs, DottedVariable):
 
-            dtype = d_var.pop('datatype')
             name = lhs.lhs.name
             if self._current_function == '__init__':
 
@@ -1580,7 +1576,7 @@ class SemanticParser(BasicParser):
                 # ISSUES #177: lhs must be a pointer when rhs is allocatable array
                 self._ensure_target(rhs, d_lhs)
 
-                member = self._create_variable(n_name, dtype, rhs, d_lhs)
+                member = self._create_variable(n_name, rhs, d_lhs)
                 lhs    = DottedVariable(var, member)
 
                 # update the attributes of the class and push it to the namespace
