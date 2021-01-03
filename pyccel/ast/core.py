@@ -2644,6 +2644,10 @@ class HomogeneousTupleVariable(TupleVariable):
     for certain operators (e.g. Mul)
     """
 
+    @property
+    def is_homogeneous(self):
+        return True
+
 class InhomogeneousTupleVariable(TupleVariable):
 
     """Represents an inhomogeneous tuple variable in the code.
@@ -2680,6 +2684,10 @@ class InhomogeneousTupleVariable(TupleVariable):
     def __init__(self, arg_vars, name, *args, **kwargs):
         self._vars = tuple(arg_vars)
         Variable.__init__(self, NativeGeneric(), name, *args, **kwargs)
+
+    @property
+    def is_homogeneous(self):
+        return False
 
     def get_vars(self):
         return self._vars

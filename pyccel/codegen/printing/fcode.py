@@ -40,6 +40,7 @@ from pyccel.ast.core import (Assign, AliasAssign, Variable,
                              IndexedElement, Slice, Dlist,
                              DottedName, AsName,
                              If, PyccelArraySize, IfTernaryOperator)
+from pyccel.ast.core import InhomogeneousTupleVariable
 
 
 from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus
@@ -433,7 +434,7 @@ class FCodePrinter(CodePrinter):
             elif isinstance(f, (Tuple, PythonTuple)):
                 for i in f:
                     args.append("{}".format(self._print(i)))
-            elif isinstance(f, TupleVariable) and not f.is_homogeneous:
+            elif isinstance(f, InhomogeneousTupleVariable):
                 for i in f:
                     args.append("{}".format(self._print(i)))
             elif f.dtype is NativeString() and f != expr.expr[-1]:
@@ -518,12 +519,9 @@ class FCodePrinter(CodePrinter):
     def _print_PythonList(self, expr):
         return self._print_PythonTuple(expr)
 
-    def _print_TupleVariable(self, expr):
-        if expr.is_homogeneous:
-            return self._print_Variable(expr)
-        else:
-            fs = ', '.join(self._print(f) for f in expr)
-            return '[{0}]'.format(fs)
+    def _print_InhomogeneousTupleVariable(self, expr):
+        fs = ', '.join(self._print(f) for f in expr)
+        return '[{0}]'.format(fs)
 
     def _print_Variable(self, expr):
         return self._print(expr.name)
@@ -1002,7 +1000,7 @@ class FCodePrinter(CodePrinter):
             return ''
         # ...
 
-        if isinstance(expr.variable, TupleVariable) and not expr.variable.is_homogeneous:
+        if isinstance(expr.variable, InhomogeneousTupleVariable):
             return ''.join(self._print_Declare(Declare(v.dtype,v,intent=expr.intent, static=expr.static)) for v in expr.variable)
 
         # ... TODO improve
@@ -1047,12 +1045,9 @@ class FCodePrinter(CodePrinter):
         else:
             if isinstance(expr.dtype, NativeTuple):
                 # Non-homogenous NativeTuples must be stored in TupleVariable
-                if not expr.variable.is_homogeneous:
-                    errors.report(LIST_OF_TUPLES,
-                                  symbol=expr.variable, severity='error')
-                    expr_dtype = NativeInteger()
-                else:
-                    expr_dtype = expr.variable.homogeneous_dtype
+                errors.report(LIST_OF_TUPLES,
+                              symbol=expr.variable, severity='error')
+                expr_dtype = NativeInteger()
             else:
                 expr_dtype = expr.dtype
             dtype = self._print(expr_dtype)
@@ -1148,7 +1143,7 @@ class FCodePrinter(CodePrinter):
         if isinstance(rhs, VariableAddress):
             rhs = rhs.variable
 
-        if isinstance(lhs, TupleVariable) and not lhs.is_homogeneous:
+        if isinstance(lhs, InhomogeneousTupleVariable):
             if isinstance(rhs, (TupleVariable, PythonTuple)):
                 return self._print(CodeBlock([AliasAssign(l, rhs[i]) for i,l in enumerate(lhs)]))
             else:
@@ -1199,7 +1194,7 @@ class FCodePrinter(CodePrinter):
         return code
 
     def _print_Assign(self, expr):
-        if isinstance(expr.lhs, TupleVariable) and not expr.lhs.is_homogeneous \
+        if isinstance(expr.lhs, InhomogeneousTupleVariable) \
             and isinstance(expr.rhs, (PythonTuple,TupleVariable)):
             return '\n'.join(self._print_Assign(
                         Assign(lhs,
@@ -2638,7 +2633,7 @@ class FCodePrinter(CodePrinter):
                 return self._print(IndexedVariable(var, dtype=base.dtype,
                    shape=base.shape,prec=base.precision,
                    order=base.order,rank=base.rank)[expr.indices])
-        elif isinstance(base, TupleVariable) and not base.is_homogeneous:
+        elif isinstance(base, InhomogeneousTupleVariable):
             if len(expr.indices)==1:
                 return self._print(base[expr.indices[0]])
             else:

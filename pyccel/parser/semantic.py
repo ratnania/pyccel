@@ -30,7 +30,7 @@ from pyccel.ast.core import Allocate, Deallocate
 from pyccel.ast.core import Constant
 from pyccel.ast.core import Nil
 from pyccel.ast.core import Variable
-from pyccel.ast.core import TupleVariable, HomogeneousTupleVariable, InHomogeneousTupleVariable
+from pyccel.ast.core import TupleVariable, HomogeneousTupleVariable, InhomogeneousTupleVariable
 from pyccel.ast.core import DottedName, DottedVariable
 from pyccel.ast.core import Assign, AliasAssign, SymbolicAssign
 from pyccel.ast.core import AugAssign, CodeBlock
@@ -955,7 +955,7 @@ class SemanticParser(BasicParser):
         new_args = [self._visit(arg, **settings) for arg in args]
 
         if (len(new_args)==1 and isinstance(new_args[0],(TupleVariable, PythonTuple))):
-            len_args = len(new_args[0])
+            len_args = new_args[0].shape[0].python_value
             args = [self._visit(Indexed(args[0],i)) for i in range(len_args)]
         elif any(isinstance(arg,(TupleVariable, PythonTuple)) for arg in new_args):
             n_exprs = None
@@ -1337,7 +1337,7 @@ class SemanticParser(BasicParser):
                     elem_vars.append(var)
 
                 d_lhs['is_pointer'] = any(v.is_pointer for v in elem_vars)
-                lhs = InhomogeneousTupleVariable(elem_vars, dtype, name, **d_lhs)
+                lhs = InhomogeneousTupleVariable(elem_vars, name, **d_lhs)
 
         else:
             lhs = Variable(dtype, name, **d_lhs)
