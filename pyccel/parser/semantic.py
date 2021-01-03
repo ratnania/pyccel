@@ -1733,42 +1733,30 @@ class SemanticParser(BasicParser):
         elif isinstance(rhs, FunctionCall):
 
             func = rhs.funcdef
-            if isinstance(func, FunctionDef):
-                results = func.results
-                if results:
-                    d_var = [self._infere_type(i, **settings)
-                                 for i in results]
+            results = func.results
+            if results:
+                d_var = [self._infere_type(i, **settings)
+                             for i in results]
 
-                # case of elemental function
-                # if the input and args of func do not have the same shape,
-                # then the lhs must be already declared
-                if func.is_elemental:
-                    # we first compare the funcdef args with the func call
-                    # args
+            # case of elemental function
+            # if the input and args of func do not have the same shape,
+            # then the lhs must be already declared
+            if func.is_elemental:
+                # we first compare the funcdef args with the func call
+                # args
 #                   d_var = None
-                    func_args = func.arguments
-                    call_args = rhs.arguments
-                    f_ranks = [x.rank for x in func_args]
-                    c_ranks = [x.rank for x in call_args]
-                    same_ranks = [x==y for (x,y) in zip(f_ranks, c_ranks)]
-                    if not all(same_ranks):
-                        assert(len(c_ranks) == 1)
-                        for d in d_var:
-                            d['shape'      ] = call_args[0].shape
-                            d['rank'       ] = call_args[0].rank
-                            d['allocatable'] = call_args[0].allocatable
-                            d['order'      ] = call_args[0].order
-
-            elif isinstance(func, Interface):
-                d_var = [self._infere_type(i, **settings) for i in
-                         func.functions[0].results]
-
-                # TODO imporve this will not work for
-                # the case of different results types
-                d_var[0]['datatype'] = rhs.dtype
-
-            else:
-                d_var = self._infere_type(rhs, **settings)
+                func_args = func.arguments
+                call_args = rhs.arguments
+                f_ranks = [x.rank for x in func_args]
+                c_ranks = [x.rank for x in call_args]
+                same_ranks = [x==y for (x,y) in zip(f_ranks, c_ranks)]
+                if not all(same_ranks):
+                    assert(len(c_ranks) == 1)
+                    for d in d_var:
+                        d['shape'      ] = call_args[0].shape
+                        d['rank'       ] = call_args[0].rank
+                        d['allocatable'] = call_args[0].allocatable
+                        d['order'      ] = call_args[0].order
 
         elif isinstance(rhs, PythonMap):
 
