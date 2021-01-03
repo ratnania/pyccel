@@ -1388,6 +1388,17 @@ class SemanticParser(BasicParser):
             Provided to all _visit_ClassName functions
         """
 
+        name = d_var['datatype'].__class__.__name__
+
+        if name.startswith('Pyccel'):
+            name = name[6:]
+            d_var['cls_base'] = self.get_class(name)
+
+            # TODO if we want to use pointers then we set target to true
+            # in the ConsturcterCall
+
+            d['is_polymorphic'] = False
+
         if isinstance(lhs, Symbol):
 
             name = lhs.name
@@ -1776,27 +1787,6 @@ class SemanticParser(BasicParser):
 
         else:
             d_var  = self._infere_type(rhs, **settings)
-            d_list = d_var if isinstance(d_var, list) else [d_var]
-
-            for d in d_list:
-                name = d['datatype'].__class__.__name__
-
-                if name.startswith('Pyccel'):
-                    name = name[6:]
-                    d['cls_base'] = self.get_class(name)
-                    #TODO: Avoid writing the default variables here
-                    d['is_pointer'] = d_var.get('is_target',False) or d_var.get('is_pointer',False)
-
-                    # TODO if we want to use pointers then we set target to true
-                    # in the ConsturcterCall
-
-                    d['is_polymorphic'] = False
-
-                if isinstance(rhs, Variable) and rhs.is_target:
-                    # case of rhs is a target variable the lhs must be a pointer
-                    d['is_target' ] = False
-                    d['is_pointer'] = True
-
 
         lhs = expr.lhs
         if isinstance(lhs, (Symbol, DottedVariable)):
