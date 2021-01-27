@@ -15,7 +15,7 @@ from pyccel.ast.core      import FuncAddressDeclare, FunctionCall
 from pyccel.ast.core      import Deallocate
 from pyccel.ast.core      import FunctionAddress
 from pyccel.ast.core      import Assign, datatype, Import
-from pyccel.ast.core      import SeparatorComment
+from pyccel.ast.core      import SeparatorComment, Comment
 from pyccel.ast.core      import create_incremented_string
 
 from pyccel.ast.operators import PyccelAdd, PyccelMul, PyccelMinus, PyccelLt, PyccelGt
@@ -23,7 +23,8 @@ from pyccel.ast.operators import PyccelAssociativeParenthesis
 from pyccel.ast.operators import PyccelUnarySub, IfTernaryOperator
 
 from pyccel.ast.datatypes import default_precision, str_dtype
-from pyccel.ast.datatypes import NativeInteger, NativeBool, NativeComplex, NativeReal, NativeTuple
+from pyccel.ast.datatypes import (NativeInteger, NativeBool, NativeComplex,
+                                  NativeReal, NativeTuple, NativeSymbol)
 
 from pyccel.ast.internals import Slice
 
@@ -43,7 +44,7 @@ from pyccel.codegen.printing.codeprinter import CodePrinter
 
 from pyccel.errors.errors   import Errors
 from pyccel.errors.messages import (PYCCEL_RESTRICTION_TODO, INCOMPATIBLE_TYPEVAR_TO_FUNC,
-                                    PYCCEL_RESTRICTION_IS_ISNOT )
+                                    PYCCEL_RESTRICTION_IS_ISNOT, FOUND_SYMBOLIC_ASSIGN )
 
 from .fcode import python_builtin_datatypes
 
@@ -620,6 +621,8 @@ class CCodePrinter(CodePrinter):
         return '{}(*{})({});'.format(ret_type, name, arg_code)
 
     def _print_Declare(self, expr):
+        if isinstance(expr.dtype, NativeSymbol):
+            return ''
         declaration_type = self.get_declare_type(expr.variable)
         variable = self._print(expr.variable.name)
 
@@ -1173,6 +1176,13 @@ class CCodePrinter(CodePrinter):
             return 'alias_assign(&{}, {});'.format(lhs, rhs)
 
         return '{} = {};'.format(lhs, rhs)
+
+    def _print_SymbolicAssign(self, expr):
+        errors.report(FOUND_SYMBOLIC_ASSIGN,
+                      symbol=expr.lhs, severity='warning')
+
+        stmt = Comment(str(expr))
+        return self._print(stmt)
 
     def _print_For(self, expr):
         target = self._print(expr.target)
