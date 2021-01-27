@@ -935,6 +935,9 @@ class SymbolicAssign(Basic):
         self._rhs = rhs
         super().__init__()
 
+    def __str__(self):
+        return '{0} := {1}'.format(str(self.lhs), str(self.rhs))
+
     def _sympystr(self, printer):
         sstr = printer.doprint
         return '{0} := {1}'.format(sstr(self.lhs), sstr(self.rhs))
