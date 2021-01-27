@@ -1251,6 +1251,10 @@ class SemanticParser(BasicParser):
             return getattr(self, annotation_method)(expr, **settings)
 
         func     = self.get_function(name)
+        sym_func = self.get_symbolic_function(name)
+
+        if sym_func is not None:
+            return self._visit(sym_func(*expr.args))
 
         args = self._handle_function_args(expr.args, **settings)
 
