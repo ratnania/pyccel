@@ -632,7 +632,7 @@ class Lambda(Basic):
 
     Parameters
     ==========
-    variables : tuple of symbols
+    variables : tuple of Arguments
                 The arguments to the lambda expression
     expr      : Expr
                 The expression carried out when the lambda function is called
@@ -661,7 +661,7 @@ class Lambda(Basic):
         the calling arguments
         """
         assert(len(args) == len(self.variables))
-        return self.expr.subs(self.variables, args)
+        return self.expr.subs([(Symbol(v.name),a) for v,a in zip(self.variables, args)])
 
     def __str__(self):
         return "{args} -> {expr}".format(args=self.variables,
