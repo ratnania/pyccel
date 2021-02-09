@@ -23,6 +23,7 @@ from sympy.core import cache
 
 from pyccel.ast.basic import PyccelAstNode
 
+from pyccel.ast.core import If, IfSection
 from pyccel.ast.core import Allocate, Deallocate
 from pyccel.ast.core import Assign, AliasAssign, SymbolicAssign
 from pyccel.ast.core import AugAssign, CodeBlock
@@ -96,8 +97,6 @@ from pyccel.errors.errors import PyccelSemanticError
 
 # TODO - remove import * and only import what we need
 #      - use OrderedDict whenever it is possible
-# TODO move or delete extract_subexpressions when we introduce
-#   Functional programming
 from pyccel.errors.messages import *
 
 from pyccel.parser.base      import BasicParser, Scope
@@ -944,6 +943,12 @@ class SemanticParser(BasicParser):
                 bounding_box=(self._current_fst_node.lineno, self._current_fst_node.col_offset),
                 severity='error', blocker=self.blocking)
 
+        for arg in var[args].indices:
+            if not isinstance(arg, Slice) and not \
+                (hasattr(arg, 'dtype') and isinstance(arg.dtype, NativeInteger)):
+                errors.report(INVALID_INDICES, symbol=var[args],
+                bounding_box=(self._current_fst_node.lineno, self._current_fst_node.col_offset),
+                severity='error', blocker=self.blocking)
         return var[args]
 
     def _visit_IndexedElement(self, expr, **settings):
@@ -1155,10 +1160,6 @@ class SemanticParser(BasicParser):
             severity='fatal', blocker=True)
 
     def _visit_PyccelOperator(self, expr, **settings):
-        #stmts, expr = extract_subexpressions(expr)
-        #stmts = []
-        #if stmts:
-        #    stmts = [self._visit(i, **settings) for i in stmts]
         args     = [self._visit(a, **settings) for a in expr.args]
         try:
             expr_new = expr.func(*args)
@@ -2302,9 +2303,14 @@ class SemanticParser(BasicParser):
 
         return While(test, body, local_vars)
 
+    def _visit_IfSection(self, expr, **settings):
+        cond = self._visit(expr.condition)
+        body = self._visit(expr.body)
+        return IfSection(cond, body)
+
     def _visit_If(self, expr, **settings):
         args = [self._visit(i, **settings) for i in expr.blocks]
-        return expr.func(*args)
+        return If(*args)
 
     def _visit_IfTernaryOperator(self, expr, **settings):
         args = [self._visit(i, **settings) for i in expr.args]
@@ -2379,13 +2385,14 @@ class SemanticParser(BasicParser):
         headers = []
 
         not_used = [d for d in decorators if d not in def_decorators.__all__]
-
         if len(not_used) >= 1:
-            errors.report(UNDEFINED_DECORATORS, symbol=', '.join(not_used), severity='warning')
+            errors.report(UNUSED_DECORATORS, symbol=', '.join(not_used), severity='warning')
 
         args_number = len(expr.arguments)
         templates = self.get_templates()
-        templates.update(expr.templates)
+        if decorators['template']:
+            # Load templates dict from decorators dict
+            templates.update(decorators['template']['template_dict'])
 
         tmp_headers = expr.headers
         if cls_name:

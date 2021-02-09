@@ -12,8 +12,6 @@ In this module we implement some of them in alphabetical order.
 """
 
 from sympy import Symbol
-from sympy import Expr, Not
-from sympy import sympify
 
 from .basic     import Basic, PyccelAstNode
 from .datatypes import (NativeInteger, NativeBool, NativeReal,
@@ -23,7 +21,7 @@ from .internals import PyccelInternalFunction
 from .literals  import LiteralInteger, LiteralFloat, LiteralComplex, Nil
 from .literals  import Literal, LiteralImaginaryUnit, get_default_literal_value
 from .operators import PyccelAdd, PyccelAnd, PyccelMul, PyccelIsNot
-from .operators import PyccelMinus, PyccelUnarySub
+from .operators import PyccelMinus, PyccelUnarySub, PyccelNot
 
 __all__ = (
     'PythonReal',
@@ -46,16 +44,6 @@ __all__ = (
 )
 
 #==============================================================================
-# TODO [YG, 06.03.2020]: avoid core duplication between builtins and core
-local_sympify = {
-    'N'    : Symbol('N'),
-    'S'    : Symbol('S'),
-    'zeros': Symbol('zeros'),
-    'ones' : Symbol('ones'),
-    'Point': Symbol('Point')
-}
-
-#==============================================================================
 class PythonComplexProperty(PyccelInternalFunction):
     """Represents a call to the .real or .imag property
 
@@ -72,7 +60,7 @@ class PythonComplexProperty(PyccelInternalFunction):
 
     def __init__(self, arg):
         self._precision = arg.precision
-        PyccelInternalFunction.__init__(self, arg)
+        super().__init__(arg)
 
     @property
     def internal_var(self):
@@ -97,7 +85,7 @@ class PythonReal(PythonComplexProperty):
         if arg.dtype is not NativeComplex():
             return arg
         else:
-            return PythonComplexProperty.__new__(cls, arg)
+            return super().__new__(cls, arg)
 
 #==============================================================================
 class PythonImag(PythonComplexProperty):
@@ -114,11 +102,11 @@ class PythonImag(PythonComplexProperty):
         if arg.dtype is not NativeComplex():
             return get_default_literal_value(arg.dtype)
         else:
-            return PythonComplexProperty.__new__(cls, arg)
+            return super().__new__(cls, arg)
 
 
 #==============================================================================
-class PythonBool(Expr, PyccelAstNode):
+class PythonBool(PyccelAstNode):
     """ Represents a call to Python's native bool() function.
     """
     _rank = 0
@@ -128,13 +116,19 @@ class PythonBool(Expr, PyccelAstNode):
 
     def __new__(cls, arg):
         if getattr(arg, 'is_optional', None):
-            return PyccelAnd(PyccelIsNot(arg, Nil()), Expr.__new__(cls, arg))
+            bool_expr = super().__new__(cls, arg)
+            bool_expr.__init__(arg)
+            return PyccelAnd(PyccelIsNot(arg, Nil()), bool_expr)
         else:
-            return Expr.__new__(cls, arg)
+            return super().__new__(cls, arg)
+
+    def __init__(self, arg):
+        self._arg = arg
+        super().__init__()
 
     @property
     def arg(self):
-        return self.args[0]
+        return self._arg
 
     def __str__(self):
         return 'Bool({})'.format(str(self.arg))
@@ -143,7 +137,7 @@ class PythonBool(Expr, PyccelAstNode):
         return self.__str__()
 
 #==============================================================================
-class PythonComplex(Expr, PyccelAstNode):
+class PythonComplex(PyccelAstNode):
     """ Represents a call to Python's native complex() function.
     """
 
@@ -181,7 +175,7 @@ class PythonComplex(Expr, PyccelAstNode):
         if arg0.dtype is NativeComplex() and arg1.dtype is NativeComplex():
             # both args are complex
             return PyccelAdd(arg0, PyccelMul(arg1, LiteralImaginaryUnit()))
-        return Expr.__new__(cls, arg0, arg1)
+        return super().__new__(cls, arg0, arg1)
 
     def __init__(self, arg0, arg1 = LiteralFloat(0)):
         self._is_cast = arg0.dtype is NativeComplex() and \
@@ -193,6 +187,7 @@ class PythonComplex(Expr, PyccelAstNode):
             self._internal_var = arg0
 
         else:
+            self._internal_var = None
 
             if arg0.dtype is NativeComplex() and \
                     not (isinstance(arg1, Literal) and arg1.python_value == 0):
@@ -211,6 +206,7 @@ class PythonComplex(Expr, PyccelAstNode):
             else:
                 self._real_part = arg0
                 self._imag_part = arg1
+        super().__init__()
 
     @property
     def is_cast(self):
@@ -244,18 +240,19 @@ class PythonEnumerate(Basic):
 
     """
 
-    def __new__(cls, arg):
+    def __init__(self, arg):
         if PyccelAstNode.stage != "syntactic" and \
                 not isinstance(arg, PyccelAstNode):
             raise TypeError('Expecting an arg of valid type')
-        return Basic.__new__(cls, arg)
+        self._element = arg
+        super().__init__()
 
     @property
     def element(self):
-        return self._args[0]
+        return self._element
 
 #==============================================================================
-class PythonFloat(Expr, PyccelAstNode):
+class PythonFloat(PyccelAstNode):
     """ Represents a call to Python's native float() function.
     """
     _rank = 0
@@ -269,11 +266,15 @@ class PythonFloat(Expr, PyccelAstNode):
         elif isinstance(arg, LiteralInteger):
             return LiteralFloat(arg.p, precision = cls._precision)
         else:
-            return Expr.__new__(cls, arg)
+            return super().__new__(cls, arg)
+
+    def __init__(self, arg):
+        self._arg = arg
+        super().__init__()
 
     @property
     def arg(self):
-        return self._args[0]
+        return self._arg
 
 
     def __str__(self):
@@ -283,7 +284,7 @@ class PythonFloat(Expr, PyccelAstNode):
         return self.__str__()
 
 #==============================================================================
-class PythonInt(Expr, PyccelAstNode):
+class PythonInt(PyccelAstNode):
     """ Represents a call to Python's native int() function.
     """
 
@@ -296,11 +297,15 @@ class PythonInt(Expr, PyccelAstNode):
         if isinstance(arg, LiteralInteger):
             return LiteralInteger(arg.p, precision = cls._precision)
         else:
-            return Expr.__new__(cls, arg)
+            return super().__new__(cls, arg)
+
+    def __init__(self, arg):
+        self._arg = arg
+        super().__init__()
 
     @property
     def arg(self):
-        return self._args[0]
+        return self._arg
 
 #==============================================================================
 class PythonTuple(PyccelAstNode):
@@ -310,10 +315,9 @@ class PythonTuple(PyccelAstNode):
     _is_homogeneous  = False
     _order = 'C'
 
-    def __new__(cls, *args):
-        return Expr.__new__(cls, *args)
-
     def __init__(self, *args):
+        self._args = args
+        super().__init__()
         if self.stage == 'syntactic' or len(args) == 0:
             return
         is_homogeneous = all(a.dtype is not NativeGeneric() and \
@@ -394,7 +398,7 @@ class PythonLen(PyccelInternalFunction):
     _dtype     = NativeInteger()
 
     def __init__(self, arg):
-        PyccelInternalFunction.__init__(self, arg)
+        super().__init__(arg)
 
     @property
     def arg(self):
@@ -406,57 +410,17 @@ class PythonList(PythonTuple):
     """
     _order = 'C'
     _is_homogeneous = True
-    """ Represent lists in the code with dynamic memory management."""
-    def __init__(self, *args, **kwargs):
-        if self.stage == 'syntactic':
-            return
-        self._is_homogeneous = all(a.dtype is not NativeGeneric() and \
-                             args[0].dtype == a.dtype and \
-                             args[0].rank  == a.rank  and \
-                             args[0].order == a.order for a in args[1:])
-
-        bools     = [a for a in args if a.dtype is NativeBool()]
-        integers  = [a for a in args if a.dtype is NativeInteger()]
-        reals     = [a for a in args if a.dtype is NativeReal()]
-        complexes = [a for a in args if a.dtype is NativeComplex()]
-        strs      = [a for a in args if a.dtype is NativeString()]
-        if strs:
-            self._dtype = NativeString()
-            self._rank  = 0
-            self._shape = ()
-
-        else:
-            if complexes:
-                self._dtype     = NativeComplex()
-                self._precision = max(a.precision for a in complexes)
-            elif reals:
-                self._dtype     = NativeReal()
-                self._precision = max(a.precision for a in reals)
-            elif integers:
-                self._dtype     = NativeInteger()
-                self._precision = max(a.precision for a in integers)
-            elif bools:
-                self._dtype     = NativeBool()
-                self._precision  = max(a.precision for a in bools)
-
-            shapes = [a.shape for a in args]
-            self._rank = max(a.rank for a in args) + 1
-            if all(sh is not None for sh in shapes):
-                self._shape = (LiteralInteger(len(args)), ) + shapes[0]
-                self._rank  = len(self._shape)
-
-    @property
-    def is_homogeneous(self):
-        return self._is_homogeneous
 
 #==============================================================================
 class PythonMap(Basic):
     """ Represents the map stmt
     """
-    def __new__(cls, *args):
+
+    def __init__(self, *args):
         if len(args)<2:
             raise TypeError('wrong number of arguments')
-        return Basic.__new__(cls, *args)
+        self._args = args
+        super().__init__()
 
 #==============================================================================
 class PythonPrint(Basic):
@@ -475,14 +439,13 @@ class PythonPrint(Basic):
     Print((results, n, m))
     """
 
-    def __new__(cls, expr):
-        if not isinstance(expr, list):
-            expr = sympify(expr, locals=local_sympify)
-        return Basic.__new__(cls, expr)
+    def __init__(self, expr):
+        self._expr = expr
+        super().__init__()
 
     @property
     def expr(self):
-        return self._args[0]
+        return self._expr
 
 #==============================================================================
 class PythonRange(Basic):
@@ -501,41 +464,38 @@ class PythonRange(Basic):
     Range(0, n, 1)
     """
 
-    def __new__(cls, *args):
-        start = LiteralInteger(0)
-        stop = None
-        step = LiteralInteger(1)
+    def __init__(self, *args):
+        # Define default values
+        n = len(args)
 
-        if isinstance(args, (tuple, list)):
-            if len(args) == 1:
-                stop = args[0]
-            elif len(args) == 2:
-                start = args[0]
-                stop = args[1]
-            elif len(args) == 3:
-                start = args[0]
-                stop = args[1]
-                step = args[2]
-            else:
-                raise ValueError('Range has at most 3 arguments')
-        elif isinstance(args, PyccelAstNode):
-            stop = args
-        elif PyccelAstNode.stage != "syntactic":
-            raise TypeError('expecting a list or valid stop')
+        if n == 1:
+            self._start = LiteralInteger(0)
+            self._stop  = args[0]
+            self._step  = LiteralInteger(1)
+        elif n == 2:
+            self._start = args[0]
+            self._stop  = args[1]
+            self._step  = LiteralInteger(1)
+        elif n == 3:
+            self._start = args[0]
+            self._stop  = args[1]
+            self._step  = args[2]
+        else:
+            raise ValueError('Range has at most 3 arguments')
 
-        return Basic.__new__(cls, start, stop, step)
+        super().__init__()
 
     @property
     def start(self):
-        return self._args[0]
+        return self._start
 
     @property
     def stop(self):
-        return self._args[1]
+        return self._stop
 
     @property
     def step(self):
-        return self._args[2]
+        return self._step
 
 
 #==============================================================================
@@ -546,12 +506,13 @@ class PythonZip(Basic):
 
     """
 
-    def __new__(cls, *args):
+    def __init__(self, *args):
         if not isinstance(args, (tuple, list)):
             raise TypeError('args must be a list or tuple')
         elif len(args) < 2:
             raise ValueError('args must be of length > 2')
-        return Basic.__new__(cls, *args)
+        self._args = args
+        super().__init__()
 
     @property
     def element(self):
@@ -569,7 +530,7 @@ class PythonAbs(PyccelInternalFunction):
         self._dtype     = NativeInteger() if x.dtype is NativeInteger() else NativeReal()
         self._precision = default_precision[str_dtype(self._dtype)]
         self._order     = x.order
-        PyccelInternalFunction.__init__(self, x)
+        super().__init__(x)
 
     @property
     def arg(self):
@@ -583,14 +544,13 @@ class PythonSum(PyccelInternalFunction):
     """
 
     def __init__(self, arg):
-        if not isinstance(arg, (list, tuple, PythonTuple, PythonList,
-                                Variable, Expr)): # pylint: disable=undefined-variable
+        if not isinstance(arg, PyccelAstNode):
             raise TypeError('Unknown type of  %s.' % type(arg))
         self._dtype = arg.dtype
         self._rank  = 0
         self._shape = ()
         self._precision = default_precision[str_dtype(self._dtype)]
-        PyccelInternalFunction.__init__(self, arg)
+        super().__init__(arg)
 
     @property
     def arg(self):
@@ -610,7 +570,7 @@ class PythonMax(PyccelInternalFunction):
         self._rank      = 0
         self._dtype     = x.dtype
         self._precision = x.precision
-        PyccelInternalFunction.__init__(self, x)
+        super().__init__(x)
 
 
 #==============================================================================
@@ -624,7 +584,48 @@ class PythonMin(PyccelInternalFunction):
         self._rank      = 0
         self._dtype     = x.dtype
         self._precision = x.precision
-        PyccelInternalFunction.__init__(self, x)
+        super().__init__(x)
+
+#==============================================================================
+class Lambda(Basic):
+    """Represents a call to python lambda for temporary functions
+
+    Parameters
+    ==========
+    variables : tuple of symbols
+                The arguments to the lambda expression
+    expr      : PyccelAstNode
+                The expression carried out when the lambda function is called
+    """
+    def __init__(self, variables, expr):
+        if not isinstance(variables, (list, tuple)):
+            raise TypeError("Lambda arguments must be a tuple or list")
+        self._variables = tuple(variables)
+        self._expr = expr
+        super().__init__()
+
+    @property
+    def variables(self):
+        """ The arguments to the lambda function
+        """
+        return self._variables
+
+    @property
+    def expr(self):
+        """ The expression carried out when the lambda function is called
+        """
+        return self._expr
+
+    def __call__(self, *args):
+        """ Returns the expression with the arguments replaced with
+        the calling arguments
+        """
+        assert(len(args) == len(self.variables))
+        return self.expr.subs(self.variables, args)
+
+    def __str__(self):
+        return "{args} -> {expr}".format(args=self.variables,
+                expr = self.expr)
 
 #==============================================================================
 class Lambda(Basic):
@@ -704,5 +705,5 @@ builtin_functions_dict = {
     'len'      : PythonLen,
     'max'      : PythonMax,
     'min'      : PythonMin,
-    'not'      : Not,   # TODO [YG, 20.05.2020]: do not use Sympy's Not
+    'not'      : PyccelNot,
 }

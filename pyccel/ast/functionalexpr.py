@@ -22,35 +22,40 @@ class FunctionalFor(Basic):
 
     """."""
 
-    def __new__(
-        cls,
+    def __init__(
+        self,
         loops,
         expr=None,
         lhs=None,
         indices=None,
         index=None,
         ):
-        return Basic.__new__(cls, loops, expr, lhs, indices, index)
+        self._loops   = loops
+        self._expr    = expr
+        self._lhs     = lhs
+        self._indices = indices
+        self._index   = index
+        super().__init__()
 
     @property
     def loops(self):
-        return self._args[0]
+        return self._loops
 
     @property
     def expr(self):
-        return self._args[1]
+        return self._expr
 
     @property
     def lhs(self):
-        return self._args[2]
+        return self._lhs
 
     @property
     def indices(self):
-        return self._args[3]
+        return self._indices
 
     @property
     def index(self):
-        return self._args[4]
+        return self._index
 
 #==============================================================================
 class GeneratorComprehension(AtomicExpr, Basic):

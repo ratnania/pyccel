@@ -21,8 +21,6 @@ from sympy.core import Symbol
 from sympy.core.numbers import NegativeInfinity as NINF
 from sympy.core.numbers import Infinity as INF
 
-from sympy.logic.boolalg import Not
-
 from pyccel.ast.core import get_iterable_ranges
 from pyccel.ast.core import AddOp, MulOp, SubOp, DivOp
 from pyccel.ast.core import SeparatorComment, Comment
@@ -32,12 +30,12 @@ from pyccel.ast.internals    import PyccelInternalFunction
 from pyccel.ast.itertoolsext import Product
 from pyccel.ast.core import (Assign, AliasAssign, Declare,
                              CodeBlock, Dlist, AsName,
-                             If)
+                             If, IfSection)
 from pyccel.ast.variable  import (Variable, TupleVariable,
                              IndexedElement,
                              DottedName, PyccelArraySize)
 
-from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus
+from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus, PyccelNot
 
 from pyccel.ast.operators      import PyccelUnarySub, PyccelLt, PyccelGt, IfTernaryOperator
 
@@ -741,14 +739,40 @@ class FCodePrinter(CodePrinter):
         result_code = self._print_MathFloor(expr)
         return 'real({}, {})'.format(result_code, self.print_kind(expr))
 
+    def _print_NumpyArange(self, expr):
+        start  = self._print(expr.start)
+        step   = self._print(expr.step)
+        shape  = PyccelMinus(expr.shape[0], LiteralInteger(1))
+        index  = Variable(NativeInteger(), name =  self.parser.get_new_name('i'))
+
+        if self._current_function:
+            name = self._current_function
+            func = self.get_function(name)
+            func.local_vars.append(index)
+        else:
+            self._namespace.variables[index.name] = index
+
+        code = '[({start} + {step} * {index}, {index} = {0}, {shape}, {1})]'
+        code = code.format(self._print(LiteralInteger(0)),
+                           self._print(LiteralInteger(1)),
+                           start  = start,
+                           step   = step,
+                           index  = self._print(index),
+                           shape  = self._print(shape))
+
+        return code
+
     # ======================================================================= #
     def _print_PyccelArraySize(self, expr):
         init_value = self._print(expr.arg)
         prec = self.print_kind(expr)
+
         if expr.arg.order == 'C':
-            index = self._print(expr.arg.rank - expr.index)
+            index = PyccelMinus(LiteralInteger(expr.arg.rank), expr.index)
+            index = self._print(index)
         else:
-            index = self._print(expr.index + 1)
+            index = PyccelAdd(expr.index, LiteralInteger(1))
+            index = self._print(index)
 
         if expr.arg.rank == 1:
             return 'size({0}, kind={1})'.format(init_value, prec)
@@ -2211,7 +2235,7 @@ class FCodePrinter(CodePrinter):
         DEBUG = True
 
         err = ErrorExit()
-        args = [(Not(expr.test), [PythonPrint(["'Assert Failed'"]), err])]
+        args = [IfSection(PyccelNot(expr.test), [PythonPrint(["'Assert Failed'"]), err])]
 
         if DEBUG:
             args.append((True, PythonPrint(["'PASSED'"])))

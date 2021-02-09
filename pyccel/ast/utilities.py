@@ -7,7 +7,6 @@
 
 import inspect
 
-from sympy import Not
 from numpy import pi
 
 import pyccel.decorators as pyccel_decorators
@@ -52,9 +51,6 @@ def builtin_function(expr, args=None):
 
     if name in dic.keys() :
         return dic[name](*args)
-
-    if name == 'Not':
-        return Not(*args)
 
     if name == 'map':
         func = str(expr.args[0].name)

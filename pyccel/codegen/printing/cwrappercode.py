@@ -17,7 +17,7 @@ from pyccel.ast.literals  import Nil
 from pyccel.ast.builtins import PythonPrint
 
 from pyccel.ast.core import Assign, AliasAssign, FunctionDef, FunctionAddress
-from pyccel.ast.core import If, Return, FunctionCall, Deallocate
+from pyccel.ast.core import If, IfSection, Return, FunctionCall, Deallocate
 from pyccel.ast.core import create_incremented_string, SeparatorComment
 from pyccel.ast.core import Import
 from pyccel.ast.core import AugAssign
@@ -214,8 +214,8 @@ class CWrapperCodePrinter(CCodePrinter):
         numpy_type_collect_func_call = FunctionCall(PyArray_ScalarAsCtype, [collect_var, var])
         check_scalar_type = FunctionCall(PyArray_CheckScalar, [collect_var])
 
-        body = If((check_scalar_type, [numpy_type_collect_func_call]),
-                (LiteralTrue() , [Assign(var, python_type_collect_func_call)]))
+        body = If(IfSection(check_scalar_type, [numpy_type_collect_func_call]),
+                IfSection(LiteralTrue() , [Assign(var, python_type_collect_func_call)]))
 
         return body
 
@@ -305,14 +305,14 @@ class CWrapperCodePrinter(CCodePrinter):
         body : list
             A list of statements
         """
-        body = [(PyccelEq(VariableAddress(collect_var), VariableAddress(Py_None)),
+        body = [IfSection(PyccelEq(VariableAddress(collect_var), VariableAddress(Py_None)),
                 [Assign(VariableAddress(variable), Nil())])]
         if check_type : # Type check
             check = PyccelNot(PyccelOr(NumpyType_Check(variable, collect_var)
                     , PythonType_Check(variable, collect_var)))
             error = PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(variable, variable.dtype))
-            body += [(check, [error, Return([Nil()])])]
-        body += [(LiteralTrue(), [self._create_collecting_value_body(variable, collect_var, tmp_variable),
+            body += [IfSection(check, [error, Return([Nil()])])]
+        body += [IfSection(LiteralTrue(), [self._create_collecting_value_body(variable, collect_var, tmp_variable),
                     Assign(VariableAddress(variable), VariableAddress(tmp_variable))])]
         body = [If(*body)]
 
@@ -344,14 +344,14 @@ class CWrapperCodePrinter(CCodePrinter):
         body : list
             A list of statements
         """
-        body = [(PyccelEq(VariableAddress(collect_var), VariableAddress(Py_None)),
+        body = [IfSection(PyccelEq(VariableAddress(collect_var), VariableAddress(Py_None)),
                 [Assign(variable, variable.value)])]
         if check_type : # Type check
             check = PyccelNot(PyccelOr(NumpyType_Check(variable, collect_var)
                     , PythonType_Check(variable, collect_var)))
             error = PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(variable, variable.dtype))
-            body += [(check, [error, Return([Nil()])])]
-        body += [(LiteralTrue(), [self._create_collecting_value_body(variable, collect_var)])]
+            body += [IfSection(check, [error, Return([Nil()])])]
+        body += [IfSection(LiteralTrue(), [self._create_collecting_value_body(variable, collect_var)])]
         body = [If(*body)]
 
         return body
@@ -391,19 +391,19 @@ class CWrapperCodePrinter(CCodePrinter):
         #check optional :
         if variable.is_optional :
             check = PyccelNot(VariableAddress(collect_var))
-            body += [(check, [Assign(VariableAddress(variable), Nil())])]
+            body += [IfSection(check, [Assign(VariableAddress(variable), Nil())])]
 
         #rank check :
         check = PyccelNe(FunctionCall(numpy_get_ndims,[collect_var]), LiteralInteger(collect_var.rank))
         error = PyErr_SetString('PyExc_TypeError', '"{} must have rank {}"'.format(collect_var, str(collect_var.rank)))
-        body  += [(check, [error, Return([Nil()])])]
+        body  += [IfSection(check, [error, Return([Nil()])])]
         if check_type : #Type check
             numpy_dtype = self.find_in_numpy_dtype_registry(variable)
             arg_dtype   = self.find_in_dtype_registry(self._print(variable.dtype), variable.precision)
             check = PyccelNe(FunctionCall(numpy_get_type, [collect_var]), numpy_dtype)
             info_dump = PythonPrint([FunctionCall(numpy_get_type, [collect_var]), numpy_dtype])
             error = PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(variable, arg_dtype))
-            body += [(check, [info_dump, error, Return([Nil()])])]
+            body += [IfSection(check, [info_dump, error, Return([Nil()])])]
 
         if collect_var.rank > 1 and self._target_language == 'fortran' :#Order check
             if collect_var.order == 'F':
@@ -412,9 +412,9 @@ class CWrapperCodePrinter(CCodePrinter):
                 check = FunctionCall(numpy_check_flag,[collect_var, numpy_flag_c_contig])
                 error = PyErr_SetString('PyExc_NotImplementedError',
                         '"Argument does not have the expected ordering ({})"'.format(collect_var.order))
-                body += [(PyccelNot(check), [error, Return([Nil()])])]
+                body += [IfSection(PyccelNot(check), [error, Return([Nil()])])]
 
-        body += [(LiteralTrue(), [Assign(VariableAddress(variable),
+        body += [IfSection(LiteralTrue(), [Assign(VariableAddress(variable),
                             self.get_collect_function_call(variable, collect_var))])]
         body = [If(*body)]
 
@@ -656,7 +656,7 @@ class CWrapperCodePrinter(CCodePrinter):
             funcs_def.append(mini_wrapper_func_def)
 
             # append check condition to the functioncall
-            body_tmp.append((PyccelEq(check_var, LiteralInteger(flags)), [AliasAssign(wrapper_results[0],
+            body_tmp.append(IfSection(PyccelEq(check_var, LiteralInteger(flags)), [AliasAssign(wrapper_results[0],
                     FunctionCall(mini_wrapper_func_def, parse_args))]))
 
         # Errors / Types management
@@ -665,8 +665,8 @@ class CWrapperCodePrinter(CCodePrinter):
         funcs_def.append(check_func_def)
 
         # Create the wrapper body with collected informations
-        body_tmp = [((PyccelNot(check_var), [Return([Nil()])]))] + body_tmp
-        body_tmp.append((LiteralTrue(),
+        body_tmp = [IfSection(PyccelNot(check_var), [Return([Nil()])])] + body_tmp
+        body_tmp.append(IfSection(LiteralTrue(),
             [PyErr_SetString('PyExc_TypeError', '"Arguments combinations don\'t exist"'),
             Return([Nil()])]))
         wrapper_body_translations = [If(*body_tmp)]
@@ -674,7 +674,7 @@ class CWrapperCodePrinter(CCodePrinter):
         # Parsing Arguments
         parse_node = PyArg_ParseTupleNode(python_func_args, python_func_kwargs, funcs[0].arguments, parse_args, keyword_list, True)
         wrapper_body += list(default_value.values())
-        wrapper_body.append(If((PyccelNot(parse_node), [Return([Nil()])])))
+        wrapper_body.append(If(IfSection(PyccelNot(parse_node), [Return([Nil()])])))
 
         #finishing the wrapper body
         wrapper_body.append(Assign(check_var, FunctionCall(check_func_def, parse_args)))
@@ -704,12 +704,12 @@ class CWrapperCodePrinter(CCodePrinter):
             for elem in arg_type_check_list:
                 var_name = elem[0].name
                 value = elem[2] << flags
-                body.append((elem[1], [AugAssign(check_var, '+' ,value)]))
+                body.append(IfSection(elem[1], [AugAssign(check_var, '+' ,value)]))
                 types.append(elem[0])
             flags -= 4
             error = ' or '.join(['{} bit {}'.format(v.precision * 8 , str_dtype(v.dtype)) if not isinstance(v.dtype, NativeBool)
                             else  str_dtype(v.dtype) for v in types])
-            body.append((LiteralTrue(), [PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(var_name, error)), Return([LiteralInteger(0)])]))
+            body.append(IfSection(LiteralTrue(), [PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(var_name, error)), Return([LiteralInteger(0)])]))
             check_func_body += [If(*body)]
 
         check_func_body = [Assign(check_var, LiteralInteger(0))] + check_func_body
@@ -858,7 +858,7 @@ class CWrapperCodePrinter(CCodePrinter):
 
         # Parse arguments
         parse_node = PyArg_ParseTupleNode(python_func_args, python_func_kwargs, local_arg_vars, parse_args, keyword_list)
-        wrapper_body.append(If((PyccelNot(parse_node), [Return([Nil()])])))
+        wrapper_body.append(If(IfSection(PyccelNot(parse_node), [Return([Nil()])])))
         wrapper_body.extend(wrapper_body_translations)
 
         # Call function

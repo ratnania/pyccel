@@ -31,11 +31,10 @@ from pyccel.ast.core import FunctionDef
 from pyccel.ast.core import PythonFunction, SympyFunction
 from pyccel.ast.core import ClassDef
 from pyccel.ast.core import For, FunctionalFor
-from pyccel.ast.core import If
+from pyccel.ast.core import If, IfSection
 from pyccel.ast.core import While
 from pyccel.ast.core import Del
 from pyccel.ast.core import Assert
-from pyccel.ast.core import PythonTuple
 from pyccel.ast.core import Comment, EmptyNode
 from pyccel.ast.core import Break, Continue
 from pyccel.ast.core import Argument, ValuedArgument
@@ -43,7 +42,6 @@ from pyccel.ast.core import Import
 from pyccel.ast.core import AsName
 from pyccel.ast.core import CommentBlock
 from pyccel.ast.core import With
-from pyccel.ast.core import PythonList
 from pyccel.ast.core import StarredArguments
 from pyccel.ast.core import CodeBlock
 from pyccel.ast.core import IndexedElement
@@ -58,6 +56,7 @@ from pyccel.ast.operators import PyccelUnary, PyccelUnarySub
 from pyccel.ast.operators import PyccelIs, PyccelIsNot
 from pyccel.ast.operators import IfTernaryOperator
 
+from pyccel.ast.builtins import PythonTuple, PythonList
 from pyccel.ast.builtins import PythonPrint, Lambda
 from pyccel.ast.headers  import Header, MetaVariable
 from pyccel.ast.literals import LiteralInteger, LiteralFloat, LiteralComplex
@@ -629,7 +628,7 @@ class SyntaxParser(BasicParser):
         local_vars   = []
         global_vars  = []
         headers      = []
-        templates    = {}
+        template    = {}
         is_pure      = False
         is_elemental = False
         is_private   = False
@@ -685,7 +684,7 @@ class SyntaxParser(BasicParser):
 
         if 'allow_negative_index' in decorators:
             decorators['allow_negative_index'] = tuple(str(b) for a in decorators['allow_negative_index'] for b in a.args)
-
+        template['template_dict'] = {}
         # extract the templates
         if 'template' in decorators:
             for comb_types in decorators['template']:
@@ -728,14 +727,19 @@ class SyntaxParser(BasicParser):
 
                 txt  = '#$ header template ' + str(tp_name)
                 txt += '(' + '|'.join(types) + ')'
-                if tp_name in templates:
+                if tp_name in template['template_dict']:
                     msg = 'The template "{}" is duplicated'.format(tp_name)
                     errors.report(msg,
                                 bounding_box = (stmt.lineno, stmt.col_offset),
                                 severity='warning')
+                # Make templates decorator dict accessible from decorators dict
+                template['template_dict'][tp_name] = hdr_parse(stmts=txt)
+            # Make template decorator list accessible from decorators dict
+            template['decorator_list'] = decorators['template']
+            decorators['template'] = template
 
-                templates[tp_name] = hdr_parse(stmts=txt)
-
+        if not template['template_dict']:
+            decorators['template'] = None
         # extract the types to construct a header
         if 'types' in decorators:
             for comb_types in decorators['types']:
@@ -845,7 +849,6 @@ class SyntaxParser(BasicParser):
                imports=imports,
                decorators=decorators,
                headers=headers,
-               templates=templates,
                doc_string=doc_string)
 
         func.set_fst(stmt)
@@ -1051,10 +1054,10 @@ class SyntaxParser(BasicParser):
         orelse = self._visit(stmt.orelse)
         if len(orelse)==1 and isinstance(orelse[0],If):
             orelse = orelse[0].blocks
-            return If((test, body), *orelse)
+            return If(IfSection(test, body), *orelse)
         else:
-            orelse = (LiteralTrue(), orelse)
-            return If((test, body), orelse)
+            orelse = IfSection(LiteralTrue(), orelse)
+            return If(IfSection(test, body), orelse)
 
     def _visit_IfExp(self, stmt):
 

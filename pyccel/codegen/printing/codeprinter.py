@@ -9,7 +9,6 @@
 
 from sympy.core.basic import Basic
 from sympy.core.symbol import Symbol
-from sympy.core.sympify import _sympify
 from sympy.printing.str import StrPrinter
 
 from pyccel.ast.core import Assign
@@ -54,8 +53,6 @@ class CodePrinter(StrPrinter):
 
         if assign_to:
             expr = Assign(assign_to, expr)
-        else:
-            expr = _sympify(expr)
 
         # Do the actual printing
         lines = self._print(expr).splitlines(True)

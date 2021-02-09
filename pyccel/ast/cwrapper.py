@@ -23,6 +23,7 @@ from .datatypes import NativeBool, NativeString, NativeGeneric, NativeVoid
 
 from .core      import FunctionCall, FunctionDef, FunctionAddress
 from .core      import AliasAssign, Assign, Return, If, DottedVariable
+from .core      import IfSection
 
 from .literals  import LiteralTrue
 
@@ -490,9 +491,9 @@ def bool_to_pyobj(cast_function_name):
     cast_function_argument = Variable(dtype=NativeBool(), name = 'b')
     cast_function_result   = Variable(dtype=PyccelPyObject(), name='o', is_pointer=True)
     cast_function_body = [If(
-                            (PythonBool(cast_function_argument),
+                            IfSection(PythonBool(cast_function_argument),
                                 [AliasAssign(cast_function_result, Py_True)]),
-                            (LiteralTrue(),
+                            IfSection(LiteralTrue(),
                                 [AliasAssign(cast_function_result, Py_False)])
                           ),
                           Return([cast_function_result])]

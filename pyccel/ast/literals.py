@@ -32,6 +32,7 @@ class Literal(PyccelAstNode):
     _shape     = ()
 
     def __init__(self, precision):
+        super().__init__()
         if not isinstance(precision, int):
             raise TypeError("precision must be an integer")
         self._precision = precision
@@ -51,43 +52,36 @@ class Literal(PyccelAstNode):
         return printer.doprint(self.python_value)
 
 #------------------------------------------------------------------------------
-class LiteralTrue(Literal, Basic):
+class LiteralTrue(Literal):
     """Represents the python value True"""
     _dtype     = NativeBool()
-    def __new__(cls, precision = default_precision['bool']):
-        return Basic.__new__(cls, precision)
 
     def __init__(self, precision = default_precision['bool']):
-        Literal.__init__(self, precision)
+        super().__init__(precision)
 
     @property
     def python_value(self):
         return True
 
 #------------------------------------------------------------------------------
-class LiteralFalse(Literal, Basic):
+class LiteralFalse(Literal):
     """Represents the python value False"""
     _dtype     = NativeBool()
-    def __new__(cls, precision = default_precision['bool']):
-        return Basic.__new__(cls, precision)
 
     def __init__(self,precision = default_precision['bool']):
-        Literal.__init__(self, precision)
+        super().__init__(precision)
 
     @property
     def python_value(self):
         return False
 
 #------------------------------------------------------------------------------
-class LiteralInteger(Literal, Basic):
+class LiteralInteger(Literal):
     """Represents an integer literal in python"""
     _dtype     = NativeInteger()
-    def __new__(cls, value, precision = default_precision['integer']):
-        return Basic.__new__(cls, value)
 
     def __init__(self, value, precision = default_precision['integer']):
-        Basic.__init__(self)
-        Literal.__init__(self, precision)
+        super().__init__(precision)
         if not isinstance(value, int):
             raise TypeError("A LiteralInteger can only be created with an integer")
         self.p = value
@@ -117,23 +111,22 @@ class LiteralFloat(Literal, sp_Float):
 
 
 #------------------------------------------------------------------------------
-class LiteralComplex(Literal, Basic):
+class LiteralComplex(Literal):
     """Represents a complex literal in python"""
     _dtype     = NativeComplex()
 
     def __new__(cls, real, imag, precision = default_precision['complex']):
         if cls is LiteralImaginaryUnit:
-            return Basic.__new__(cls, real, imag)
+            return super().__new__(cls, real, imag)
         real_part = cls._collect_python_val(real)
         imag_part = cls._collect_python_val(imag)
         if real_part == 0 and imag_part == 1:
             return LiteralImaginaryUnit()
         else:
-            return Basic.__new__(cls, real, imag)
+            return super().__new__(cls, real, imag)
 
     def __init__(self, real, imag, precision = default_precision['complex']):
-        Basic.__init__(self)
-        Literal.__init__(self, precision)
+        super().__init__(precision)
         self._real_part = LiteralFloat(self._collect_python_val(real))
         self._imag_part = LiteralFloat(self._collect_python_val(imag))
 
@@ -164,25 +157,22 @@ class LiteralComplex(Literal, Basic):
 class LiteralImaginaryUnit(LiteralComplex):
     """Represents the python value j"""
     def __new__(cls):
-        return LiteralComplex.__new__(cls, 0, 1)
+        return super().__new__(cls, 0, 1)
 
     def __init__(self, real=0, imag=1, precision = default_precision['complex']):
-        LiteralComplex.__init__(self, 0, 1)
+        super().__init__(0, 1)
 
     @property
     def python_value(self):
         return 1j
 
 #------------------------------------------------------------------------------
-class LiteralString(Literal, Basic):
+class LiteralString(Literal):
     """Represents a string literal in python"""
     _dtype     = NativeString()
     _precision = 0
-    def __new__(cls, arg):
-        return Basic.__new__(cls, arg)
-
     def __init__(self, arg):
-        Basic.__init__(self)
+        super().__init__(self._precision)
         if not isinstance(arg, str):
             raise TypeError('arg must be of type str')
         self._string = arg
@@ -209,9 +199,11 @@ class Nil(Basic):
     """
     class for None object in the code.
     """
-
     def __str__(self):
         return 'None'
+
+    def __bool__(self):
+        return False
 
 #------------------------------------------------------------------------------
 
@@ -230,3 +222,60 @@ def get_default_literal_value(dtype):
     else:
         raise TypeError('Unknown type')
     return value
+
+#------------------------------------------------------------------------------
+
+def convert_to_literal(value, dtype = None, precision = None):
+    """ Convert a python value to a pyccel Literal
+
+    Parameters
+    ----------
+    value     : int/float/complex/bool/str
+                The python value
+    dtype     : DataType
+                The datatype of the python value
+                Default : Matches type of 'value'
+    precision : int
+                The precision of the value in the generated code
+                Default : python precision (see default_precision)
+
+    Returns
+    -------
+    literal_val : Literal
+                  The python value 'value' expressed as a literal
+                  with the specified dtype and precision
+    """
+    if dtype is None:
+        if isinstance(value, int):
+            dtype = NativeInteger()
+        elif isinstance(value, float):
+            dtype = NativeReal()
+        elif isinstance(value, complex):
+            dtype = NativeComplex()
+        elif isinstance(value, bool):
+            dtype = NativeBool()
+        elif isinstance(value, str):
+            dtype = NativeString()
+        else:
+            raise TypeError('Unknown type')
+
+    if precision is None and dtype is not NativeString():
+        precision = default_precision[str(dtype)]
+
+    if isinstance(dtype, NativeInteger):
+        literal_val = LiteralInteger(value, precision)
+    elif isinstance(dtype, NativeReal):
+        literal_val = LiteralFloat(value, precision)
+    elif isinstance(dtype, NativeComplex):
+        literal_val = LiteralComplex(value.real, value.imag, precision)
+    elif isinstance(dtype, NativeBool):
+        if value:
+            literal_val = LiteralTrue(precision)
+        else:
+            literal_val = LiteralFalse(precision)
+    elif isinstance(dtype, NativeString):
+        literal_val = LiteralString(value)
+    else:
+        raise TypeError('Unknown type')
+
+    return literal_val

@@ -11,6 +11,7 @@ that could be shown by pyccel.
 from collections import OrderedDict
 from os.path import basename
 from ast import dump as ast_dump
+from pyccel.ast.basic import Basic
 
 # ...
 #ERROR = 'error'
@@ -243,7 +244,7 @@ class Errors:
                 line   = symbol.lineno
                 column = symbol.col_offset
                 symbol = ast_dump(symbol)
-            else:
+            elif isinstance(symbol, Basic):
                 fst = getattr(symbol, 'fst', None)
                 if fst is not None:
                     line   = fst.lineno

@@ -72,7 +72,7 @@ WRONG_NUMBER_OUTPUT_ARGS = 'Number of output arguments does not match number of 
 INDEXED_TUPLE = 'Tuples must be indexed with constant integers for the type inference to work'
 LIST_OF_TUPLES = 'Cannot create list of non-homogeneous tuples'
 
-UNDEFINED_DECORATORS = 'Decorator(s) not used'
+UNUSED_DECORATORS = 'Decorator(s) not used'
 
 UNDEFINED_LAMBDA_VARIABLE = 'Unknown variable(s) in lambda function'
 UNDEFINED_LAMBDA_FUNCTION = 'Unknown function in lambda function'
@@ -137,6 +137,7 @@ INVALID_PYTHON_SYNTAX = 'Python syntax error'
 ASSIGN_ARRAYS_ONE_ANOTHER = 'Arrays which own their data cannot become views on other arrays'
 ARRAY_ALREADY_IN_USE = 'Attempt to reallocate an array which is being used by another variable'
 INVALID_POINTER_REASSIGN = 'Attempt to give data ownership to a pointer'
+INVALID_INDICES = 'only integers and slices (`:`) are valid indices'
 
 # warnings
 UNDEFINED_INIT_METHOD = 'Undefined `__init__` method'

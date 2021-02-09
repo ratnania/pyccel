@@ -347,15 +347,18 @@ def test_atan2_phrase(language):
     z = rand()
     assert(isclose(f2(x, y, z), atan2_phrase(x, y, z), rtol=1e-14, atol=1e-15))
 
+#------------------------------- Floor function ------------------------------#
 def test_floor_call(language):
     @types('real')
     def floor_call(x):
         from math import floor
         return floor(x)
 
-    f1 = epyccel(floor_call, language = language)
+    fflags = "-Werror -Wconversion"
+    f1 = epyccel(floor_call, language = language, fflags=fflags)
     x = rand()
     assert(isclose(f1(x) ,  floor_call(x), rtol=1e-14, atol=1e-15))
+    assert(isclose(f1(-x) ,  floor_call(-x), rtol=1e-14, atol=1e-15))
 
 def test_floor_phrase(language):
     @types('real','real')
@@ -364,10 +367,14 @@ def test_floor_phrase(language):
         a = floor(x)*floor(y)
         return a
 
-    f2 = epyccel(floor_phrase, language = language)
+    fflags = "-Werror -Wconversion"
+    f2 = epyccel(floor_phrase, language = language, fflags=fflags)
     x = rand()
     y = rand()
     assert(isclose(f2(x,y) ,  floor_phrase(x,y), rtol=1e-14, atol=1e-15))
+    assert(isclose(f2(-x,y) ,  floor_phrase(-x,y), rtol=1e-14, atol=1e-15))
+    assert(isclose(f2(x,-y) ,  floor_phrase(x,-y), rtol=1e-14, atol=1e-15))
+    assert(isclose(f2(-x,-y) ,  floor_phrase(-x,-y), rtol=1e-14, atol=1e-15))
 
 def test_floor_return_type(language):
     @types('int')
@@ -382,14 +389,20 @@ def test_floor_return_type(language):
         a = floor(x)
         return a
 
-    f1 = epyccel(floor_return_type_int, language = language)
+    fflags = "-Werror -Wconversion"
+    f1 = epyccel(floor_return_type_int, language = language, fflags=fflags)
+
     x = randint(100)
     assert(isclose(f1(x) ,  floor_return_type_int(x), rtol=1e-14, atol=1e-15))
+    assert(isclose(f1(-x) ,  floor_return_type_int(-x), rtol=1e-14, atol=1e-15))
     assert(type(f1(x))  == type(floor_return_type_int(x))) # pylint: disable=unidiomatic-typecheck
 
-    f1 = epyccel(floor_return_type_real, language = language)
+    fflags = "-Werror -Wconversion"
+    f1 = epyccel(floor_return_type_real, language = language, fflags=fflags)
+
     x = randint(100)
     assert(isclose(f1(x) ,  floor_return_type_real(x), rtol=1e-14, atol=1e-15))
+    assert(isclose(f1(-x) ,  floor_return_type_real(-x), rtol=1e-14, atol=1e-15))
     assert(type(f1(x))  == type(floor_return_type_real(x))) # pylint: disable=unidiomatic-typecheck
 
 #------------------------------- Ceil function -------------------------------#
@@ -399,9 +412,12 @@ def test_ceil_call_r(language):
         from math import ceil
         return ceil(x)
 
-    f1 = epyccel(ceil_call, language = language)
+    fflags = "-Werror -Wconversion"
+    f1 = epyccel(ceil_call, language = language, fflags=fflags)
+
     x = rand()
     assert(ceil_call(x) == f1(x))
+    assert(ceil_call(-x) == f1(-x))
 
     assert isinstance(ceil_call(x), type(f1(x)))
 
@@ -411,9 +427,12 @@ def test_ceil_call_i(language):
         from math import ceil
         return ceil(x)
 
-    f1 = epyccel(ceil_call, language = language)
+    fflags = "-Werror -Wconversion"
+    f1 = epyccel(ceil_call, language = language, fflags=fflags)
+
     x = randint(10)
     assert(ceil_call(x) == f1(x))
+    assert(ceil_call(-x) == f1(-x))
 
     assert isinstance(ceil_call(x), type(f1(x)))
 
@@ -424,11 +443,15 @@ def test_ceil_phrase(language):
         a = ceil(x)*ceil(y)
         return a
 
-    f2 = epyccel(ceil_phrase, language = language)
+    fflags = "-Werror -Wconversion"
+    f2 = epyccel(ceil_phrase, language = language, fflags=fflags)
+
     x = rand()
     y = rand()
     assert(isclose(ceil_phrase(x, y), f2(x, y), rtol=1e-14, atol=1e-15))
-
+    assert(isclose(ceil_phrase(-x, y), f2(-x, y), rtol=1e-14, atol=1e-15))
+    assert(isclose(ceil_phrase(x, -y), f2(x, -y), rtol=1e-14, atol=1e-15))
+    assert(isclose(ceil_phrase(-x, -y), f2(-x, -y), rtol=1e-14, atol=1e-15))
 #------------------------------- copysign function -------------------------------#
 
 def test_copysign_call(language):

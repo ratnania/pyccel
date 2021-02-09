@@ -7,12 +7,10 @@
 """
 This module contains all classes and functions used for handling macros.
 """
-
+from sympy import Symbol
 from sympy.core.expr import AtomicExpr
-from sympy import sympify
 
-from .basic          import Basic, PyccelAstNode
-from .core           import local_sympify
+from .basic          import PyccelAstNode
 from .datatypes      import default_precision
 from .datatypes      import NativeInteger, NativeGeneric
 
@@ -29,15 +27,16 @@ class Macro(AtomicExpr, PyccelAstNode):
     """."""
     _name = '__UNDEFINED__'
 
-    def __new__(cls, argument):
-        # TODO add verification
+    def __init__(self, argument):
+        if not isinstance(argument, Symbol):
+            raise TypeError("Argument must be a symbol not {}".format(type(argument)))
 
-        argument = sympify(argument, locals=local_sympify)
-        return Basic.__new__(cls, argument)
+        self._argument = argument
+        super().__init__()
 
     @property
     def argument(self):
-        return self._args[0]
+        return self._argument
 
     @property
     def name(self):
@@ -52,11 +51,9 @@ class MacroShape(Macro):
     _dtype     = NativeInteger()
     _precision = default_precision['integer']
 
-    def __new__(cls, argument, index=None):
-        return Macro.__new__(cls, argument)
-
     def __init__(self, argument, index=None):
         self._index = index
+        super().__init__(argument)
 
     @property
     def index(self):
@@ -79,9 +76,6 @@ class MacroType(Macro):
     _shape     = ()
     _precision = 0
 
-    def __new__(cls, argument):
-        return Macro.__new__(cls, argument)
-
     def _sympystr(self, printer):
         sstr = printer.doprint
         return 'MacroType({})'.format(sstr(self.argument))
@@ -94,9 +88,6 @@ class MacroCount(Macro):
     _shape     = ()
     _dtype     = NativeInteger()
     _precision = default_precision['integer']
-
-    def __new__(cls, argument):
-        return Macro.__new__(cls, argument)
 
     def _sympystr(self, printer):
         sstr = printer.doprint
@@ -112,7 +103,6 @@ def construct_macro(name, argument, parameter=None):
     if not isinstance(name, str):
         raise TypeError('name must be of type str')
 
-    argument = sympify(argument, locals=local_sympify)
     if name == 'shape':
         return MacroShape(argument, index=parameter)
     elif name == 'dtype':

@@ -85,6 +85,7 @@ typedef struct  s_ndarray
 /* functions prototypes */
 
 /* allocations */
+void        stack_array_init(t_ndarray *arr);
 t_ndarray   array_create(int32_t nd, int64_t *shape, enum e_types type);
 void        _array_fill_int8(int8_t c, t_ndarray arr);
 void        _array_fill_int16(int16_t c, t_ndarray arr);
@@ -110,7 +111,7 @@ int32_t         free_array(t_ndarray dump);
 int32_t         free_pointer(t_ndarray dump);
 
 /* indexing */
-int32_t         get_index(t_ndarray arr, ...);
+int64_t         get_index(t_ndarray arr, ...);
 
 /* data converting between numpy and ndarray */
 int64_t     *numpy_to_ndarray_strides(int64_t *np_strides, int type_size, int nd);

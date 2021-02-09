@@ -23,9 +23,14 @@ class Product(Basic):
             raise TypeError('args must be an iterable')
         elif len(args) < 2:
             return args[0]
-        return Basic.__new__(cls, *args)
+        else:
+            return super().__new__(cls, *args)
+
+    def __init__(self, *args):
+        self._elements = args
+        super().__init__()
 
     @property
     def elements(self):
         """get expression's elements"""
-        return self._args
+        return self._elements

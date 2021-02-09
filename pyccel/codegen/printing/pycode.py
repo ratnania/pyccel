@@ -83,10 +83,13 @@ class PythonCodePrinter(SympyPythonCodePrinter):
         imports = self._indent_codestring(imports)
         code = ('def {name}({args}):\n'
                 '\n{imports}\n{body}\n').format(name=name, args=args,imports=imports, body=body)
-
         decorators = expr.decorators
-
         if decorators:
+            if decorators['template']:
+                # Eliminate template_dict because it is useless in the printing
+                expr.decorators['template'] = expr.decorators['template']['decorator_list']
+            else:
+                expr.decorators.pop('template')
             for n,f in decorators.items():
                 if n in pyccel_decorators:
                     self._additional_imports.add(Import(DottedName('pyccel.decorators'), n))

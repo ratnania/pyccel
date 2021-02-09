@@ -65,6 +65,50 @@ t_ndarray   array_create(int32_t nd, int64_t *shape, enum e_types type)
     return (arr);
 }
 
+void    stack_array_init(t_ndarray *arr)
+{
+    switch (arr->type)
+    {
+        case nd_int8:
+            arr->type_size = sizeof(int8_t);
+            break;
+        case nd_int16:
+            arr->type_size = sizeof(int16_t);
+            break;
+        case nd_int32:
+            arr->type_size = sizeof(int32_t);
+            break;
+        case nd_int64:
+            arr->type_size = sizeof(int64_t);
+            break;
+        case nd_float:
+            arr->type_size = sizeof(float);
+            break;
+        case nd_double:
+            arr->type_size = sizeof(double);
+            break;
+        case nd_bool:
+            arr->type_size = sizeof(bool);
+            break;
+        case nd_cfloat:
+            arr->type_size = sizeof(float complex);
+            break;
+        case nd_cdouble:
+            arr->type_size = sizeof(double complex);
+            break;
+    }
+    arr->length = 1;
+    for (int32_t i = 0; i < arr->nd; i++)
+        arr->length *= arr->shape[i];
+    arr->buffer_size = arr->length * arr->type_size;
+    for (int32_t i = 0; i < arr->nd; i++)
+    {
+        arr->strides[i] = 1;
+        for (int32_t j = i + 1; j < arr->nd; j++)
+            arr->strides[i] *= arr->shape[j];
+    }
+}
+
 void   _array_fill_int8(int8_t c, t_ndarray arr)
 {
     if (c == 0)
@@ -260,7 +304,7 @@ void        alias_assign(t_ndarray *dest, t_ndarray src)
 ** indexing
 */
 
-int32_t     get_index(t_ndarray arr, ...)
+int64_t     get_index(t_ndarray arr, ...)
 {
     va_list va;
     int32_t index;
@@ -269,7 +313,7 @@ int32_t     get_index(t_ndarray arr, ...)
     index = 0;
     for (int32_t i = 0; i < arr.nd; i++)
     {
-        index += va_arg(va, int32_t) * arr.strides[i];
+        index += va_arg(va, int64_t) * arr.strides[i];
     }
     va_end(va);
     return (index);

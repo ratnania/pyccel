@@ -112,7 +112,7 @@ dtype_and_precision_registry = { 'real':('real',default_precision['float']),
                                  'pythonbool' :('bool',default_precision['bool'])}
 
 
-class DataType(with_metaclass(Singleton, Basic)):
+class DataType(with_metaclass(Singleton)):
     """Base class representing native datatypes"""
     _name = '__UNDEFINED__'
 
@@ -224,12 +224,13 @@ dtype_registry = {'bool': Bool,
 
 class UnionType(Basic):
 
-    def __new__(cls, args):
-        return Basic.__new__(cls, args)
+    def __init__(self, args):
+        self._args = args
+        super().__init__()
 
     @property
     def args(self):
-        return self._args[0]
+        return self._args
 
 
 def DataTypeFactory(name, argnames=["_name"],
