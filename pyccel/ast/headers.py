@@ -279,6 +279,7 @@ class FunctionHeader(Header):
             precision = dc['precision']
             rank = dc['rank']
             is_const = dc['is_const']
+            cls_base = None
             if 'is_tuple' in dc:
                 cls_base = PythonTuple if dc['is_tuple'] else None
             order = None
