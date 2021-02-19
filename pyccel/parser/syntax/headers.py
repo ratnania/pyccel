@@ -156,6 +156,41 @@ class Type(BasicStmt):
             d_var['order'] = order
         return d_var
 
+class TupleType(BasicStmt):
+    """Base class representing a  TupleType in the grammar."""
+
+    def __init__(self, **kwargs):
+        """
+        Constructor for a TypeHeader.
+
+        dtype: list of str
+        """
+        self.dtype = kwargs.pop('dtype')
+
+        super(TupleType, self).__init__(**kwargs)
+
+    @property
+    def expr(self):
+        dtypes = [str(i.expr['datatype']) for i in self.dtype]
+        precisions = [i.expr['precision'] for i in self.dtype]
+        if not (all(dtypes[0]==i for i in dtypes)):
+            raise TypeError('all element of the TypeList must have the same type')
+
+        d_var = {}
+        d_var['datatype'] = str(dtypes[0])
+        d_var['rank'] = len(dtypes)
+        d_var['is_pointer'] = len(dtypes)>0
+        d_var['allocatable'] = False
+        d_var['precision'] = max(precisions)
+        d_var['order'] = 'C'
+        d_var['is_func'] = False
+        d_var['is_const'] = False
+        if not(d_var['precision']):
+            if d_var['datatype'] in ['double','float','complex','int']:
+                d_var['precision'] = default_precision[d_var['datatype']]
+        return d_var
+
+
 class TypeHeader(BasicStmt):
     pass
 
@@ -507,6 +542,7 @@ class FunctionMacroStmt(BasicStmt):
 # lists.
 hdr_classes = [Header, TypeHeader,
                Type, ListType, UnionTypeStmt, FuncType,
+               TupleType,
                HeaderResults,
                FunctionHeaderStmt,
                TemplateStmt,
