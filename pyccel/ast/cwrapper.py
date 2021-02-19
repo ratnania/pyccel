@@ -291,6 +291,16 @@ PyFloat_AsDouble = FunctionDef(name = 'PyFloat_AsDouble',
                         arguments = [Variable(dtype=PyccelPyObject(), name = 'o', is_pointer=True)],
                         results   = [Variable(dtype=NativeReal(), name = 'r')])
 
+PyTuple_GET_SIZE = FunctionDef(name = 'PyTuple_GET_SIZE',
+                               body = [],
+                               arguments = [Variable(dtype = PyccelPyObject(), name = 'o', is_pointer = True)],
+							   results  = [Variable(dtype = NativeInteger(), name = 'r')])
+
+PyTuple_GetItem = FunctionDef(name = 'PyTuple_GetItem',
+							  body = [],
+							  arguments = [Variable(dtype = PyccelPyObject(), name = 'o', is_pointer = True	)],
+							  results  = [Variable(dtype = PyccelPyObject(), name = 'r', is_pointer = True	)])
+
 #-------------------------------------------------------------------
 #                      Numpy functions
 #-------------------------------------------------------------------
