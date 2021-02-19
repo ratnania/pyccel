@@ -148,6 +148,7 @@ class Type(BasicStmt):
         d_var['precision']  = precision
         d_var['is_func'] = False
         d_var['is_const'] = False
+
         if not(precision):
             if dtype in ['double' ,'float','complex', 'int']:
                 d_var['precision'] = default_precision[dtype]
@@ -174,15 +175,16 @@ class TupleType(BasicStmt):
         dtypes = [str(i.expr['datatype']) for i in self.dtype]
         precisions = [i.expr['precision'] for i in self.dtype]
         if not (all(dtypes[0]==i for i in dtypes)):
-            raise TypeError('all element of the TypeList must have the same type')
+            raise TypeError('all element of the TupleList must have the same type')
 
         d_var = {}
         d_var['datatype'] = str(dtypes[0])
         d_var['rank'] = len(dtypes)
         d_var['is_pointer'] = len(dtypes)>0
-        d_var['allocatable'] = False
+        d_var['allocatable'] = True
         d_var['precision'] = max(precisions)
         d_var['order'] = 'C'
+        d_var['is_pointer'] = False
         d_var['is_func'] = False
         d_var['is_const'] = False
         d_var['is_tuple'] = True
