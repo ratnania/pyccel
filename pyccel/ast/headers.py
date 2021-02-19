@@ -16,6 +16,7 @@ from .macros            import Macro, MacroShape, construct_macro
 from .variable          import DottedName, DottedVariable
 from .variable          import Variable
 from .variable          import ValuedVariable
+from .builtins          import PythonTuple
 
 __all__ = (
     'ClassHeader',
@@ -278,7 +279,7 @@ class FunctionHeader(Header):
             precision = dc['precision']
             rank = dc['rank']
             is_const = dc['is_const']
-
+            cls_base = PythonTuple if dc['is_tuple'] else None
             order = None
             shape = None
             if rank >1:
@@ -292,7 +293,7 @@ class FunctionHeader(Header):
             var = Variable(dtype, var_name,
                         allocatable=allocatable, is_pointer=is_pointer, is_const=is_const,
                         rank=rank, shape=shape ,order = order, precision = precision,
-                        is_argument=True)
+                        is_argument=True, cls_base = cls_base)
             return var
 
         def process_template(signature, Tname, d_type):
