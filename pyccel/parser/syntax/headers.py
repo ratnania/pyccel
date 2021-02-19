@@ -148,7 +148,6 @@ class Type(BasicStmt):
         d_var['precision']  = precision
         d_var['is_func'] = False
         d_var['is_const'] = False
-        d_var['is_tuple'] = True
         if not(precision):
             if dtype in ['double' ,'float','complex', 'int']:
                 d_var['precision'] = default_precision[dtype]
@@ -186,6 +185,7 @@ class TupleType(BasicStmt):
         d_var['order'] = 'C'
         d_var['is_func'] = False
         d_var['is_const'] = False
+        d_var['is_tuple'] = True
         if not(d_var['precision']):
             if d_var['datatype'] in ['double','float','complex','int']:
                 d_var['precision'] = default_precision[d_var['datatype']]
