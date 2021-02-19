@@ -23,7 +23,9 @@ ListType : '[' dtype+=Type[','] ']';
 
 FuncType: '('(results*=TypeHeader[','])?')' '('decs*=TypeHeader[',']')';
 
-TypeHeader: FuncType|Type|ListType;
+TupleType: 'tuple' '[' dtype+=Type[','] ']';
+
+TypeHeader: TupleType|FuncType|Type|ListType;
 UnionTypeStmt: (const=Const)? dtypes+=TypeHeader['|'] ;
 Const: 'const';
 
