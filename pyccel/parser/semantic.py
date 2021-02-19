@@ -2501,7 +2501,7 @@ class SemanticParser(BasicParser):
                         d_var['is_kwonly'] = a.is_kwonly
                         d_var['is_const'] = ah.is_const
                         dtype = d_var.pop('datatype')
-                        if d_var['rank']>0:
+                        if d_var['rank']>0 and not d_var['cls_base']:
                             d_var['cls_base'] = NumpyArrayClass
 
                         if 'allow_negative_index' in self._namespace.decorators:
