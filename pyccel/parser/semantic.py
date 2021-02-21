@@ -2501,14 +2501,17 @@ class SemanticParser(BasicParser):
                         d_var['is_kwonly'] = a.is_kwonly
                         d_var['is_const'] = ah.is_const
                         dtype = d_var.pop('datatype')
-                        if d_var['rank']>0 and not d_var['cls_base']:
+                        if d_var['rank']>0:
                             d_var['cls_base'] = NumpyArrayClass
 
                         if 'allow_negative_index' in self._namespace.decorators:
                             if a.name in decorators['allow_negative_index']:
                                 d_var.update(allows_negative_indexes=True)
                         # this is needed for the static case
-                        if isinstance(a, ValuedArgument):
+                        if isinstance(ah, TupleVariable):
+                            a_new = TupleVariable([], dtype, a.name, **d_var)
+
+                        elif isinstance(a, ValuedArgument):
 
                             # optional argument only if the value is None
                             if isinstance(a.value, Nil):
