@@ -36,11 +36,11 @@ from pyccel.ast.cwrapper import numpy_get_ndims, numpy_get_data, numpy_get_dim
 from pyccel.ast.cwrapper import numpy_get_type, numpy_dtype_registry
 from pyccel.ast.cwrapper import numpy_check_flag, numpy_flag_c_contig, numpy_flag_f_contig
 from pyccel.ast.cwrapper import PyArray_CheckScalar, PyArray_ScalarAsCtype
-from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE, malloc
+from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE, malloc, free
 
 from pyccel.ast.bind_c   import as_static_function_call
 
-from pyccel.ast.variable  import VariableAddress, Variable, ValuedVariable, IndexedElement
+from pyccel.ast.variable  import VariableAddress, Variable, ValuedVariable, IndexedElement, TupleVariable
 
 from pyccel.errors.errors import Errors
 from pyccel.errors.messages import PYCCEL_RESTRICTION_TODO
@@ -463,25 +463,26 @@ class CWrapperCodePrinter(CCodePrinter):
         holder    = Variable(name = 'tuple_element', dtype = variable.dtype)
         name      = self.get_new_name(self._global_names, 'pytuple_to_array')
 
-        ret  = variable.clone(name = 'ret')
+        ret       = variable
 
         for_range = PythonRange(size)
-        body =  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_variable]))]
+        body =  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_var]))]
         body += [self._body_scalar(holder, py_holder, True)]
         body += [Assign(IndexedElement(ret, index), holder)]
 
-        body.append(For(index, for_range, body))
+        body = [For(index, for_range, body)]
         body.append(Return([ret]))
         funcDef =  FunctionDef(name       = name,
-                               arguments  = [collect_variable, size],
+                               arguments  = [collect_var, size],
                                results    = [ret],
                                body       = body,
                                local_vars = [index, py_holder, holder])
 
         self._cast_functions_dict[name] = funcDef
-
-        body = If(PyccelNot(FunctionCall(funcDef, [collect_var, size]), [Return(Nil())]))
-
+        body = [Assign(variable, FunctionCall(funcDef, [collect_var, size]))]
+        body += [If(IfSection(PyccelNot(variable),
+                                [FunctionCall(free, [variable]), Return([Nil()])]))]
+        return body
 
     def _body_array(self, variable, collect_var, check_type = False):
         """
@@ -567,7 +568,7 @@ class CWrapperCodePrinter(CCodePrinter):
         tmp_variable = None
         body         = []
 
-        if isinstance(variable.cls_base, PythonTuple):
+        if isinstance(variable, TupleVariable):
             body = self._body_tuple(used_names, variable, collect_var, check_type)
 
         elif variable.rank > 0:
@@ -604,12 +605,16 @@ class CWrapperCodePrinter(CCodePrinter):
             The variable which will be used to collect the argument
         """
 
-        if variable.rank > 0:
+        if isinstance(variable, TupleVariable):
+            collect_type = PyccelPyObject()
+            collect_var  = Variable(dtype=collect_type, is_pointer=True,
+                                   name = self.get_new_name(used_names, variable.name+"_tmp"))
+
+        elif variable.rank > 0:
             collect_type = PyccelPyArrayObject()
             collect_var  = Variable(dtype= collect_type, is_pointer = True, rank = variable.rank,
                                    order= variable.order,
                                    name=self.get_new_name(used_names, variable.name+"_tmp"))
-
         else:
             collect_type = PyccelPyObject()
             collect_var  = Variable(dtype=collect_type, is_pointer=True,
@@ -707,7 +712,7 @@ class CWrapperCodePrinter(CCodePrinter):
             mini_wrapper_func_vars = {a.name : a for a in func.arguments}
             # update ndarray local variables properties
             local_arg_vars = [a.clone(a.name, is_pointer=True, allocatable=False)
-                              if isinstance(a, Variable) and a.rank > 0 else a for a in func.arguments]
+                              if isinstance(a, Variable) and not isinstance(a, TupleVariable) and a.rank > 0 else a for a in func.arguments]
             # update optional variable properties
             local_arg_vars = [a.clone(a.name, is_pointer=True) if a.is_optional else a for a in local_arg_vars]
             flags = 0
@@ -854,6 +859,11 @@ class CWrapperCodePrinter(CCodePrinter):
         assert(len(expr.indices)==1)
         return '{}[{}]'.format(expr.base.name, self._print(expr.indices[0]))
 
+    def _print_TupleVariable(self, expr):
+        if expr.is_pointer :
+            return '*{}'.format(expr.name)
+        return '{}'.format(expr.name)
+
     def _print_PyccelPyObject(self, expr):
         return 'pyobject'
 
@@ -908,7 +918,7 @@ class CWrapperCodePrinter(CCodePrinter):
 
         # update ndarray local variables properties
         local_arg_vars = [a.clone(a.name, is_pointer=True, allocatable=False)
-                          if isinstance(a, Variable) and a.rank > 0 else a for a in expr.arguments]
+                          if isinstance(a, Variable) and not isinstance(a, TupleVariable) and a.rank > 0 else a for a in expr.arguments]
         # update optional variable properties
         local_arg_vars = [a.clone(a.name, is_pointer=True) if a.is_optional else a for a in local_arg_vars]
 
