@@ -14,13 +14,13 @@ from pyccel.codegen.printing.ccode import CCodePrinter
 from pyccel.ast.literals  import LiteralTrue, LiteralInteger, LiteralString
 from pyccel.ast.literals  import Nil
 
-from pyccel.ast.builtins import PythonPrint
+from pyccel.ast.builtins import PythonPrint, PythonRange
 
 from pyccel.ast.core import Assign, AliasAssign, FunctionDef, FunctionAddress
 from pyccel.ast.core import If, IfSection, Return, FunctionCall, Deallocate
 from pyccel.ast.core import create_incremented_string, SeparatorComment
 from pyccel.ast.core import Import
-from pyccel.ast.core import AugAssign
+from pyccel.ast.core import AugAssign, For
 
 from pyccel.ast.operators import PyccelEq, PyccelNot, PyccelAnd, PyccelNe, PyccelOr, PyccelAssociativeParenthesis, IfTernaryOperator, PyccelIsNot
 
@@ -36,10 +36,11 @@ from pyccel.ast.cwrapper import numpy_get_ndims, numpy_get_data, numpy_get_dim
 from pyccel.ast.cwrapper import numpy_get_type, numpy_dtype_registry
 from pyccel.ast.cwrapper import numpy_check_flag, numpy_flag_c_contig, numpy_flag_f_contig
 from pyccel.ast.cwrapper import PyArray_CheckScalar, PyArray_ScalarAsCtype
+from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE
 
 from pyccel.ast.bind_c   import as_static_function_call
 
-from pyccel.ast.variable  import VariableAddress, Variable, ValuedVariable
+from pyccel.ast.variable  import VariableAddress, Variable, ValuedVariable, IndexedElement
 
 from pyccel.errors.errors import Errors
 from pyccel.errors.messages import PYCCEL_RESTRICTION_TODO
@@ -532,6 +533,8 @@ class CWrapperCodePrinter(CCodePrinter):
         tmp_variable : Variable
             temporary variable to hold value default None
         """
+        xx = self.pytuple_to_tuple('hello there', collect_var)
+        self._cast_functions_dict['hello there'] = xx
         tmp_variable = None
         body         = []
 
@@ -782,6 +785,23 @@ class CWrapperCodePrinter(CCodePrinter):
         sep = self._print(SeparatorComment(40))
 
         return sep + '\n'.join(CCodePrinter._print_FunctionDef(self, f) for f in funcs_def)
+
+    def pytuple_to_tuple(self, cast_function_name, collect_variable):
+        index = Variable(name = 'i', dtype= NativeInteger())
+        ret  = Variable(name = 'out', dtype = NativeInteger(), is_pointer = True)
+        size = Variable(name = 'size', dtype = NativeInteger())
+        
+        for_range = PythonRange(size)
+        body = [Assign(IndexedElement(ret, index), FunctionCall(PyTuple_GetItem, [collect_variable]))]
+        
+        body = For(index, for_range, body)
+        
+        return FunctionDef(name       = cast_function_name,
+                           arguments  = [collect_variable, size],
+                           results    = [ret],
+                           body       = [body],
+                           local_vars = [index])
+
 
     def _create_wrapper_check(self, check_var, parse_args, types_dict, used_names, func_name):
         check_func_body = []
