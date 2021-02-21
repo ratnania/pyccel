@@ -788,18 +788,19 @@ class CWrapperCodePrinter(CCodePrinter):
 
     def pytuple_to_tuple(self, cast_function_name, collect_variable):
         index = Variable(name = 'i', dtype= NativeInteger())
-        ret  = Variable(name = 'out', dtype = NativeInteger(), is_pointer = True)
+        ret  = Variable(name = 'out', dtype = NativeInteger(), rank = 1)
         size = Variable(name = 'size', dtype = NativeInteger())
         
         for_range = PythonRange(size)
         body = [Assign(IndexedElement(ret, index), FunctionCall(PyTuple_GetItem, [collect_variable]))]
         
-        body = For(index, for_range, body)
-        
+        body = [For(index, for_range, body)]
+        body.append(Return([ret]))
+
         return FunctionDef(name       = cast_function_name,
                            arguments  = [collect_variable, size],
                            results    = [ret],
-                           body       = [body],
+                           body       = body,
                            local_vars = [index])
 
 
@@ -837,7 +838,7 @@ class CWrapperCodePrinter(CCodePrinter):
 
     def _print_IndexedElement(self, expr):
         assert(len(expr.indices)==1)
-        return '{}[{}]'.format(self._print(expr.base), self._print(expr.indices[0]))
+        return '{}[{}]'.format(expr.base.name, self._print(expr.indices[0]))
 
     def _print_PyccelPyObject(self, expr):
         return 'pyobject'
