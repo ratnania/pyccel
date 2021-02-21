@@ -14,7 +14,7 @@ from pyccel.codegen.printing.ccode import CCodePrinter
 from pyccel.ast.literals  import LiteralTrue, LiteralInteger, LiteralString
 from pyccel.ast.literals  import Nil
 
-from pyccel.ast.builtins import PythonPrint, PythonRange
+from pyccel.ast.builtins import PythonPrint, PythonRange, PythonTuple
 
 from pyccel.ast.core import Assign, AliasAssign, FunctionDef, FunctionAddress
 from pyccel.ast.core import If, IfSection, Return, FunctionCall, Deallocate
@@ -36,7 +36,7 @@ from pyccel.ast.cwrapper import numpy_get_ndims, numpy_get_data, numpy_get_dim
 from pyccel.ast.cwrapper import numpy_get_type, numpy_dtype_registry
 from pyccel.ast.cwrapper import numpy_check_flag, numpy_flag_c_contig, numpy_flag_f_contig
 from pyccel.ast.cwrapper import PyArray_CheckScalar, PyArray_ScalarAsCtype
-from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE
+from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE, malloc
 
 from pyccel.ast.bind_c   import as_static_function_call
 
@@ -452,7 +452,38 @@ class CWrapperCodePrinter(CCodePrinter):
 
         return If(*sections)
 
-    def _body_array(self, variable, collect_var, check_type = False) :
+    def _body_tuple(self, used_names, variable, collect_var, check_type = False):
+        """
+
+        """
+        index     = Variable(name = 'i', dtype = NativeInteger())
+        size      = Variable(name = self.get_new_name(used_names, 'size'),
+                             dtype = NativeInteger())
+        py_holder = Variable(name = 'py_holder', dtype = PyccelPyObject(), is_pointer = True)
+        holder    = Variable(name = 'tuple_element', dtype = variable.dtype)
+        name      = self.get_new_name(self._global_names, 'pytuple_to_array')
+
+        ret  = variable.clone(name = 'ret')
+
+        for_range = PythonRange(size)
+        body =  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_variable]))]
+        body += [self._body_scalar(holder, py_holder, True)]
+        body += [Assign(IndexedElement(ret, index), holder)]
+
+        body.append(For(index, for_range, body))
+        body.append(Return([ret]))
+        funcDef =  FunctionDef(name       = name,
+                               arguments  = [collect_variable, size],
+                               results    = [ret],
+                               body       = body,
+                               local_vars = [index, py_holder, holder])
+
+        self._cast_functions_dict[name] = funcDef
+
+        body = If(PyccelNot(FunctionCall(funcDef, [collect_var, size]), [Return(Nil())]))
+
+
+    def _body_array(self, variable, collect_var, check_type = False):
         """
         Responsible for collecting value and managing error and create the body
         of arguments with rank greater than 0 in format
@@ -533,12 +564,13 @@ class CWrapperCodePrinter(CCodePrinter):
         tmp_variable : Variable
             temporary variable to hold value default None
         """
-        xx = self.pytuple_to_tuple('hello there', collect_var)
-        self._cast_functions_dict['hello there'] = xx
         tmp_variable = None
         body         = []
 
-        if variable.rank > 0:
+        if isinstance(variable.cls_base, PythonTuple):
+            body = self._body_tuple(used_names, variable, collect_var, check_type)
+
+        elif variable.rank > 0:
             body = self._body_array(variable, collect_var, check_type)
 
         else:
@@ -785,24 +817,6 @@ class CWrapperCodePrinter(CCodePrinter):
         sep = self._print(SeparatorComment(40))
 
         return sep + '\n'.join(CCodePrinter._print_FunctionDef(self, f) for f in funcs_def)
-
-    def pytuple_to_tuple(self, cast_function_name, collect_variable):
-        index = Variable(name = 'i', dtype= NativeInteger())
-        ret  = Variable(name = 'out', dtype = NativeInteger(), rank = 1)
-        size = Variable(name = 'size', dtype = NativeInteger())
-        
-        for_range = PythonRange(size)
-        body = [Assign(IndexedElement(ret, index), FunctionCall(PyTuple_GetItem, [collect_variable]))]
-        
-        body = [For(index, for_range, body)]
-        body.append(Return([ret]))
-
-        return FunctionDef(name       = cast_function_name,
-                           arguments  = [collect_variable, size],
-                           results    = [ret],
-                           body       = body,
-                           local_vars = [index])
-
 
     def _create_wrapper_check(self, check_var, parse_args, types_dict, used_names, func_name):
         check_func_body = []
