@@ -253,6 +253,16 @@ class PyBuildValueNode(Basic):
     def args(self):
         return self._result_args
 
+
+malloc = FunctionDef(name      = 'malloc',
+                     body      = [],
+                     arguments = [Variable(dtype=NativeInteger(), name = 'size')],
+                     results   = [Variable(dtype=NativeVoid(), name = 'r', is_pointer = True)])
+
+free   = FunctionDef(name      = 'free',
+                     body      = [],
+                     arguments = [Variable(dtype=NativeVoid(), name = 'r', is_pointer = True)],
+                     results   = [])
 #-------------------------------------------------------------------
 #                      Python.h functions
 #-------------------------------------------------------------------
