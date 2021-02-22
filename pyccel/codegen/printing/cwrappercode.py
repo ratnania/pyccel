@@ -22,7 +22,7 @@ from pyccel.ast.core import create_incremented_string, SeparatorComment
 from pyccel.ast.core import Import
 from pyccel.ast.core import AugAssign, For
 
-from pyccel.ast.operators import PyccelEq, PyccelNot, PyccelAnd, PyccelNe, PyccelOr, PyccelAssociativeParenthesis, IfTernaryOperator, PyccelIsNot
+from pyccel.ast.operators import PyccelEq, PyccelNot, PyccelAnd, PyccelNe, PyccelOr, PyccelAssociativeParenthesis, IfTernaryOperator, PyccelIsNot, PyccelAdd
 
 from pyccel.ast.datatypes import NativeInteger, NativeBool, NativeComplex, NativeReal, str_dtype, default_precision
 
@@ -480,11 +480,13 @@ class CWrapperCodePrinter(CCodePrinter):
         name      = self.get_new_name(self._global_names, 'pytuple_to_array')
 
         for_range = PythonRange(size)
-        body =  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_var, size]))]
+        body = [Assign(holder, LiteralInteger(0))]
+        body +=  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_var, index]))]
         body += [self._body_scalar(holder, py_holder, True)]
         body += [Assign(IndexedElement(variable, index), holder)]
 
-        body = [For(index, for_range, body)]
+        body = [Assign(variable, FunctionCall(malloc, [PyccelAdd(size, LiteralInteger(1))])),
+                For(index, for_range, body)]
         body.append(Return([variable]))
         funcDef =  FunctionDef(name       = name,
                                arguments  = [collect_var, size],

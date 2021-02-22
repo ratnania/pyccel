@@ -190,7 +190,7 @@ class PyArg_ParseTupleNode(Basic):
         new_parse_args = []
         for p_arg, f_arg in zip(parse_args, c_func_args):
             if isinstance(f_arg, TupleVariable):
-                new_parse_args += [PyTuple_Type, p_arg]
+                new_parse_args += [p_arg]
             elif f_arg.rank > 0:
                 new_parse_args += [PyArray_Type, p_arg]
             else:
