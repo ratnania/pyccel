@@ -31,7 +31,7 @@ from .numpyext  import NumpyReal, NumpyImag
 
 from .operators import PyccelEq
 
-from .variable  import Variable, ValuedVariable, VariableAddress
+from .variable  import Variable, ValuedVariable, VariableAddress, TupleVariable
 
 
 errors = Errors()
@@ -88,6 +88,7 @@ class PyccelPyArrayObject(DataType):
     _name = 'pyarrayobject'
 
 PyArray_Type = Variable(NativeGeneric(), 'PyArray_Type')
+PyTuple_Type = Variable(NativeGeneric(), 'PyTuple_Type')
 
 #TODO: Is there an equivalent to static so this can be a static list of strings?
 class PyArgKeywords(Basic):
@@ -186,13 +187,18 @@ class PyArg_ParseTupleNode(Basic):
             errors.report('Kwarg only arguments without default values will not raise an error if they are not passed',
                           symbol=c_func_args, severity='warning')
 
-        parse_args = [[PyArray_Type, a] if isinstance(a, Variable) and a.dtype is PyccelPyArrayObject()
-                else [a] for a in parse_args]
-        parse_args = [a for arg in parse_args for a in arg]
+        new_parse_args = []
+        for p_arg, f_arg in zip(parse_args, c_func_args):
+            if isinstance(f_arg, TupleVariable):
+                new_parse_args += [PyTuple_Type, p_arg]
+            elif f_arg.rank > 0:
+                new_parse_args += [PyArray_Type, p_arg]
+            else:
+                new_parse_args.append(p_arg)
 
         self._pyarg      = python_func_args
         self._pykwarg    = python_func_kwargs
-        self._parse_args = parse_args
+        self._parse_args = new_parse_args
         self._arg_names  = arg_names
         super().__init__()
 
