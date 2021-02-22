@@ -223,9 +223,6 @@ class CWrapperCodePrinter(CCodePrinter):
                 body = Assign(var, body)
                 additional_body.append(body)
                 static_args.append(var)
-            static_args.append(arg)
-        else:
-            static_args = [arg]
 
         return static_args, additional_body
 
@@ -469,19 +466,18 @@ class CWrapperCodePrinter(CCodePrinter):
 
         return If(*sections)
 
-    def _body_tuple(self, used_names, variable, collect_var, check_type = False):
+    def _body_tuple(self, used_names, variable, collect_var, new_static_args):
         """
 
         """
         index     = Variable(name = 'i', dtype = NativeInteger())
-        size      = Variable(name = self.get_new_name(used_names, 'size'),
-                             dtype = NativeInteger())
+        size      = new_static_args[0] #can only manage tuple rank 1
         py_holder = Variable(name = 'py_holder', dtype = PyccelPyObject(), is_pointer = True)
         holder    = Variable(name = 'tuple_element', dtype = variable.dtype)
         name      = self.get_new_name(self._global_names, 'pytuple_to_array')
 
         for_range = PythonRange(size)
-        body =  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_var]))]
+        body =  [AliasAssign(py_holder, FunctionCall(PyTuple_GetItem, [collect_var, size]))]
         body += [self._body_scalar(holder, py_holder, True)]
         body += [Assign(IndexedElement(variable, index), holder)]
 
@@ -559,7 +555,7 @@ class CWrapperCodePrinter(CCodePrinter):
 
         return body
 
-    def _body_management(self, used_names, variable, collect_var, check_type = False):
+    def _body_management(self, used_names, variable, collect_var, new_static_args, check_type = False):
         """
         Responsible for calling functions that take care of body creation
         Parameters:
@@ -584,7 +580,7 @@ class CWrapperCodePrinter(CCodePrinter):
         body         = []
 
         if isinstance(variable, TupleVariable):
-            body = self._body_tuple(used_names, variable, collect_var, check_type)
+            body = self._body_tuple(used_names, variable, collect_var, new_static_args)
 
         elif variable.rank > 0:
             body = self._body_array(variable, collect_var, check_type)
@@ -740,8 +736,9 @@ class CWrapperCodePrinter(CCodePrinter):
                 for var in new_static_args :
                     wrapper_vars[var.name] = var
                     static_args.append(var)
+                static_args.append(f_arg)
 
-                body, tmp_variable = self._body_management(used_names, f_arg, p_arg)
+                body, tmp_variable = self._body_management(used_names, f_arg, p_arg, new_static_args)
                 if tmp_variable :
                     mini_wrapper_func_vars[tmp_variable.name] = tmp_variable
 
@@ -982,10 +979,11 @@ class CWrapperCodePrinter(CCodePrinter):
             for var in new_static_args :
                 wrapper_vars[var.name] = var
                 static_args.append(var)
+            static_args.append(arg)
 
             wrapper_body_translations.extend(additional_body)
 
-            body, tmp_variable = self._body_management(used_names, arg, collect_var,True)
+            body, tmp_variable = self._body_management(used_names, arg, collect_var, new_static_args, True)
             if tmp_variable :
                 wrapper_vars[tmp_variable.name] = tmp_variable
 
