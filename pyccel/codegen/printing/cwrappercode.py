@@ -59,7 +59,7 @@ class CWrapperCodePrinter(CCodePrinter):
         CCodePrinter.__init__(self, parser, **settings)
         self._target_language = target_language
         self._cast_functions_dict = OrderedDict()
-        self._to_free_PyObject_list = []
+        self._to_free_Object_list = []
         self._function_wrapper_names = dict()
         self._global_names = set()
         self._module_name = None
@@ -495,6 +495,7 @@ class CWrapperCodePrinter(CCodePrinter):
                                local_vars = [index, py_holder, holder])
 
         self._cast_functions_dict[name] = funcDef
+        self._to_free_Object_list.append(variable)
         tuple_check = FunctionCall(PyTuple_Check, [collect_var])
         error = PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(variable, 'tuple'))
         body = [If(IfSection(PyccelNot(tuple_check), [error, Return([Nil()])]))]
@@ -676,7 +677,7 @@ class CWrapperCodePrinter(CCodePrinter):
             collect_var = Variable(dtype=collect_type, is_pointer=True,
                 name = self.get_new_name(used_names, variable.name+"_tmp"))
             cast_function = self.get_cast_function_call('complex_to_pycomplex', variable)
-            self._to_free_PyObject_list.append(collect_var)
+            self._to_free_Object_list.append(collect_var)
 
         return collect_var, cast_function
 
@@ -783,12 +784,12 @@ class CWrapperCodePrinter(CCodePrinter):
 
             # Building PybuildValue and freeing the allocated variable after.
             mini_wrapper_func_body.append(AliasAssign(wrapper_results[0],PyBuildValueNode(res_args)))
-            mini_wrapper_func_body += [FunctionCall(Py_DECREF, [i]) for i in self._to_free_PyObject_list]
+            mini_wrapper_func_body += [FunctionCall(Py_DECREF, [i]) for i in self._to_free_Object_list]
             # Call free function for C type
             if self._target_language == 'c':
                 mini_wrapper_func_body += [Deallocate(i) for i in local_arg_vars if i.rank > 0]
             mini_wrapper_func_body.append(Return(wrapper_results))
-            self._to_free_PyObject_list.clear()
+            self._to_free_Object_list.clear()
             # Building Mini wrapper function
             mini_wrapper_func_name = self.get_new_name(used_names.union(self._global_names), func.name + '_mini_wrapper')
             self._global_names.add(mini_wrapper_func_name)
@@ -1032,12 +1033,13 @@ class CWrapperCodePrinter(CCodePrinter):
         wrapper_body.append(AliasAssign(wrapper_results[0],PyBuildValueNode(res_args)))
 
         # Call free function for python type
-        wrapper_body += [FunctionCall(Py_DECREF, [i]) for i in self._to_free_PyObject_list]
+        wrapper_body += [FunctionCall(Py_DECREF, [i]) if isinstance(i, PyccelPyObject) else 
+                        FunctionCall(free, [i]) for i in self._to_free_Object_list]
 
         # Call free function for C type
         if self._target_language == 'c':
             wrapper_body += [Deallocate(i) for i in local_arg_vars if i.rank > 0]
-        self._to_free_PyObject_list.clear()
+        self._to_free_Object_list.clear()
         #Return
         wrapper_body.append(Return(wrapper_results))
         # Create FunctionDef and write using classic method
