@@ -314,10 +314,14 @@ PyTuple_GET_SIZE = FunctionDef(name = 'PyTuple_GET_SIZE',
 
 PyTuple_GetItem = FunctionDef(name = 'PyTuple_GetItem',
 							  body = [],
-							  arguments = [Variable(dtype = PyccelPyObject(), name = 'o', is_pointer = True	),
+							  arguments = [Variable(dtype = PyccelPyObject(), name = 'o', is_pointer = True),
                                            Variable(dtype = NativeInteger(), name = 'i', precision = 8)],
-							  results  = [Variable(dtype = PyccelPyObject(), name = 'r', is_pointer = True	)])
+							  results  = [Variable(dtype = PyccelPyObject(), name = 'r', is_pointer = True)])
 
+PyTuple_Check  = FunctionDef(name = 'PyTuple_Check',
+                             body = [],
+                             arguments = [Variable(dtype = PyccelPyObject(), name = 'o', is_pointer = True)],
+                             results = [Variable(dtype= NativeBool(), name = 'r')])
 #-------------------------------------------------------------------
 #                      Numpy functions
 #-------------------------------------------------------------------

@@ -36,7 +36,7 @@ from pyccel.ast.cwrapper import numpy_get_ndims, numpy_get_data, numpy_get_dim
 from pyccel.ast.cwrapper import numpy_get_type, numpy_dtype_registry
 from pyccel.ast.cwrapper import numpy_check_flag, numpy_flag_c_contig, numpy_flag_f_contig
 from pyccel.ast.cwrapper import PyArray_CheckScalar, PyArray_ScalarAsCtype
-from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE, malloc, free
+from pyccel.ast.cwrapper import PyTuple_GetItem, PyTuple_GET_SIZE, malloc, free, PyTuple_Check
 
 from pyccel.ast.bind_c   import as_static_function_call
 
@@ -495,7 +495,10 @@ class CWrapperCodePrinter(CCodePrinter):
                                local_vars = [index, py_holder, holder])
 
         self._cast_functions_dict[name] = funcDef
-        body = [Assign(variable, FunctionCall(funcDef, [collect_var, size]))]
+        tuple_check = FunctionCall(PyTuple_Check, [collect_var])
+        error = PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(variable, 'tuple'))
+        body = [If(IfSection(PyccelNot(tuple_check), [error, Return([Nil()])]))]
+        body += [Assign(variable, FunctionCall(funcDef, [collect_var, size]))]
         body += [If(IfSection(PyccelNot(variable),
                                 [FunctionCall(free, [variable]), Return([Nil()])]))]
         return body
