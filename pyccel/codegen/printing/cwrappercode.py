@@ -217,7 +217,10 @@ class CWrapperCodePrinter(CCodePrinter):
             # Add shape arguments for static function
             for i in range(arg.rank):
                 var = Variable(dtype=NativeInteger() ,name = self.get_new_name(used_names, arg.name + "_dim"))
-                body = FunctionCall(numpy_get_dim, [collect_var, i])
+                if isinstance(arg, TupleVariable):
+                    body = FunctionCall(PyTuple_GET_SIZE, [collect_var])
+                else:
+                    body = FunctionCall(numpy_get_dim, [collect_var, i])
                 if arg.is_optional:
                     body = IfTernaryOperator(PyccelIsNot(VariableAddress(collect_var), Nil()), body, LiteralInteger(0))
                 body = Assign(var, body)
