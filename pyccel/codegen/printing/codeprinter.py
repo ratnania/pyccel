@@ -62,7 +62,6 @@ class CodePrinter:
         other compatible _print_X functions. If none are found then an error is
         raised
         """
-
         classes = type(expr).__mro__
         for cls in classes:
             print_method = '_print_' + cls.__name__

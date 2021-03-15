@@ -7,6 +7,8 @@ uses python setuptools to compile a c file and generate the
 corresponding shared library file"""
 from numpy import get_include as get_numpy_include
 
+import numpy as np
+
 def print_list(l):
     """ Convert a list of strings to a string that contains the
     python constructor of a list of strings """
@@ -54,7 +56,7 @@ def create_c_setup(mod_name,
     code  = "from distutils.core import Extension, setup\n"
     code += "\n"
 
-    wrapper_file = "[ r'{0}' ]".format(wrapper_file)
+    wrapper_file = "[ r'{0}' , r'cwrapper/cwrapper.c']".format(wrapper_file) #TODO temporary fix
 
     deps  = ['{0}.o'.format(d) for d in dependencies]
 
@@ -82,7 +84,16 @@ def create_c_setup(mod_name,
     linker_flags_str   = ('extra_link_args = {0}'.format(print_list(linker_flags))
                    if flags else None)
 
-    args = [mod, wrapper_file, files, include_str, libs_str, libdirs_str, flags_str, linker_flags_str]
+    numpy_max_acceptable_version = [1, 19]
+    numpy_current_version = [int(v) for v in np.version.version.split('.')[:2]]
+    numpy_api_macro = '(r\'NPY_NO_DEPRECATED_API\', r\'NPY_{}_{}_API_VERSION\')'.format(
+            min(numpy_max_acceptable_version[0], numpy_current_version[0]),
+	    min(numpy_max_acceptable_version[1], numpy_current_version[1]))
+
+    define_macros = ('define_macros = [{0}]').format(numpy_api_macro)
+
+    args = [mod, wrapper_file, files, include_str, libs_str, libdirs_str,
+			flags_str, linker_flags_str, define_macros]
     args = ',\n\t\t'.join(a for a in args if a is not None)
 
     code += "extension_mod = Extension({args})\n\n".format(args=args)

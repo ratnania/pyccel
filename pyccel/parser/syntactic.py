@@ -912,7 +912,7 @@ class SyntaxParser(BasicParser):
         return func
 
     def _visit_keyword(self, stmt):
-
+        print(['HERE'], stmt)
         target = stmt.arg
         val = self._visit(stmt.value)
         return ValuedArgument(target, val)

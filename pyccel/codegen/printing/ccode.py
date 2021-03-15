@@ -552,7 +552,7 @@ class CCodePrinter(CodePrinter):
 
     def _print_PyccelNot(self, expr):
         a = self._print(expr.args[0])
-        return '!{}'.format(a)
+        return '!({})'.format(a)
 
     def _print_PyccelMod(self, expr):
         self._additional_imports.add("math")
@@ -709,8 +709,9 @@ class CCodePrinter(CodePrinter):
         if rank > 0:
             if expr.is_ndarray:
                 self._additional_imports.add('ndarrays')
-                return 't_ndarray '
-            errors.report(PYCCEL_RESTRICTION_TODO, symbol="rank > 0",severity='fatal')
+                dtype = 't_ndarray'
+            else:
+                errors.report(PYCCEL_RESTRICTION_TODO, symbol="rank > 0",severity='fatal')
 
         if self.stored_in_c_pointer(expr):
             return '{0} *'.format(dtype)
@@ -932,9 +933,9 @@ class CCodePrinter(CodePrinter):
         return '{}\n{}'.format(free_code, alloc_code)
 
     def _print_Deallocate(self, expr):
-        if expr.variable.is_pointer:
-            return 'free_pointer({});'.format(self._print(expr.variable))
-        return 'free_array({});'.format(self._print(expr.variable))
+        if expr.variable.allocatable:
+            return 'free_array({});'.format(self._print(expr.variable))
+        return 'free_pointer({});'.format(self._print(expr.variable))
 
     def _print_Slice(self, expr):
         start = self._print(expr.start)
@@ -1141,7 +1142,7 @@ class CCodePrinter(CodePrinter):
         for a, f in zip(expr.args, func.arguments):
             if isinstance(a, Variable) and self.stored_in_c_pointer(f):
                 args.append(VariableAddress(a))
-            elif f.is_optional and not isinstance(a, Nil):
+            elif f.is_optional and not isinstance(a, Nil) and f.rank < 1:
                 tmp_var = self.create_tmp_var(f)
                 assign = Assign(tmp_var, a)
                 self._additional_code += self._print(assign) + '\n'

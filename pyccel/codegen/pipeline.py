@@ -27,7 +27,7 @@ __all__ = ['execute_pyccel']
 
 # map internal libraries to their folders inside pyccel/stdlib
 internal_libs = {
-    "ndarrays" : "ndarrays",
+    'ndarrays' : 'ndarrays',
     "pyc_math" : "math",
 }
 
@@ -314,6 +314,8 @@ def execute_pyccel(fname, *,
 
         # Iterate over the internal_libs list and determine if the printer
         # requires an internal lib to be included.
+        l = codegen.get_printer_imports()
+        l.add("ndarrays")
         for lib in internal_libs:
             if lib in codegen.get_printer_imports():
                 # get the include folder path and library files
@@ -327,7 +329,10 @@ def execute_pyccel(fname, *,
                     lib_dest_path = os.path.join(pyccel_dirpath, lib_name)
                     if os.path.exists(lib_dest_path):
                         shutil.rmtree(lib_dest_path)
-                    shutil.copytree(lib_path, lib_dest_path)
+                    try:
+                        shutil.copytree(lib_path, lib_dest_path, copy_function = shutil.copy)
+                    except:
+                        print('[Error : copy folder]')
 
                     # stop after copying lib to __pyccel__ directory for
                     # convert only
@@ -337,14 +342,15 @@ def execute_pyccel(fname, *,
                     # get library source files
                     source_files = []
                     for e in os.listdir(lib_dest_path):
-                        if e.endswith(lang_ext_dict[language]):
+                        if e[-2:] == '.c' or (e[-4:] == '.f90' and language == fortran):
                             source_files.append(os.path.join(lib_dest_path, e))
-
+                    print('[HERE]', source_files)
                     # compile library source files
                     flags = construct_flags(f90exec,
                                             fflags=fflags,
                                             debug=debug,
                                             includes=[lib_dest_path])
+
                     try:
                         for f in source_files:
                             compile_files(f, f90exec, flags,
