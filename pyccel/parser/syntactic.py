@@ -29,7 +29,7 @@ from pyccel.ast.core import FunctionDef
 from pyccel.ast.core import PythonFunction, SympyFunction
 from pyccel.ast.core import ClassDef
 from pyccel.ast.core import Variable
-from pyccel.ast.core import DataClassDef
+from pyccel.ast.core import StructuredTypeDef
 from pyccel.ast.core import For, FunctionalFor
 from pyccel.ast.core import If, IfSection
 from pyccel.ast.core import While
@@ -856,6 +856,8 @@ class SyntaxParser(BasicParser):
 
     def _visit_ClassDef(self, stmt):
         is_dataclass = False
+        methods = ()
+        parent = None
 
         # ... treat decorators
         for d in self._visit(stmt.decorator_list):
@@ -872,17 +874,20 @@ class SyntaxParser(BasicParser):
         # ...
 
         name = stmt.name
-        # TODO extract methods
-        methods = ()
-        # TODO extract parent
-        parent = None
 
         if is_dataclass:
-            return DataClassDef(name=name, attributes=attributes,
-                            methods=methods, superclass=parent)
+            if not methods:
+                return StructuredTypeDef(name, attributes=attributes)
+
+            else:
+                # TODO extract methods
+                # TODO extract parent
+                raise NotImplementedError('Only structured type case is available')
 
         else:
-            raise NotImplementedError('Only dataclass case is available')
+            # TODO extract methods
+            # TODO extract parent
+            raise NotImplementedError('Only structured type case is available')
 
     def _visit_Subscript(self, stmt):
 

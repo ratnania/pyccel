@@ -53,7 +53,6 @@ __all__ = (
     'CommentBlock',
     'ConstructorCall',
     'Continue',
-    'DataClassDef',
     'Declare',
     'Del',
     'Dlist',
@@ -76,6 +75,7 @@ __all__ = (
     'Return',
     'SeparatorComment',
     'StarredArguments',
+    'StructuredTypeDef',
     'SymbolicAssign',
     'SymbolicPrint',
     'SympyFunction',
@@ -2450,7 +2450,7 @@ class BindCFunctionDef(FunctionDef):
     def original_function(self):
         return self._original_function
 
-class DataClassDef(Basic):
+class StructuredTypeDef(Basic):
 
     """Represents a typed structure
 
@@ -2462,12 +2462,12 @@ class DataClassDef(Basic):
     --------
     TODO
     """
-    __slots__ = ('_attributes','_methods')
-    _attribute_nodes = ('_attributes','_methods')
+    __slots__ = ('_name','_attributes')
+    _attribute_nodes = ('_name','_attributes')
 
-    def __init__(self, *args, **kwargs):
-        self._attributes = kwargs.pop('attributes', ())
-        self._methods = kwargs.pop('methods', ())
+    def __init__(self, name, attributes=()):
+        self._name = name
+        self._attributes = attributes
 
         super().__init__()
 
@@ -2478,12 +2478,12 @@ class DataClassDef(Basic):
         raise NotImplementedError('TODO')
 
     @property
-    def attributes(self):
-        return self._attributes
+    def name(self):
+        return self._name
 
     @property
-    def methods(self):
-        return self._methods
+    def attributes(self):
+        return self._attributes
 
 class ClassDef(Basic):
 
