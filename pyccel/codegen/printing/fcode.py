@@ -1672,6 +1672,21 @@ class FCodePrinter(CodePrinter):
                     severity='fatal')
         return code + '\n'
 
+    def _print_StructuredTypeDef(self, expr):
+
+        # ... declarations
+        decs = []
+        for i in expr.attributes:
+            dec = Declare(i.dtype, i)
+            decs.append(dec)
+        decs = '\n'.join(self._print(dec) for dec in decs)
+        # ...
+
+        code = 'type {name}\n{decs}end type'.format( name=expr.name,
+                                                       decs=decs )
+
+        return code
+
     def _print_ClassDef(self, expr):
         # ... we don't print 'hidden' classes
         if expr.hide:
