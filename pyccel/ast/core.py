@@ -53,6 +53,7 @@ __all__ = (
     'CommentBlock',
     'ConstructorCall',
     'Continue',
+    'DataClassDef',
     'Declare',
     'Del',
     'Dlist',
@@ -2449,6 +2450,40 @@ class BindCFunctionDef(FunctionDef):
     def original_function(self):
         return self._original_function
 
+class DataClassDef(Basic):
+
+    """Represents a typed structure
+
+    Parameters
+    ----------
+    TODO
+
+    Examples
+    --------
+    TODO
+    """
+    __slots__ = ('_attributes','_methods')
+    _attribute_nodes = ('_attributes','_methods')
+
+    def __init__(self, *args, **kwargs):
+        self._attributes = kwargs.pop('attributes', ())
+        self._methods = kwargs.pop('methods', ())
+
+        super().__init__()
+
+    def __str__(self):
+        raise NotImplementedError('TODO')
+
+    def __repr__(self):
+        raise NotImplementedError('TODO')
+
+    @property
+    def attributes(self):
+        return self._attributes
+
+    @property
+    def methods(self):
+        return self._methods
 
 class ClassDef(Basic):
 
