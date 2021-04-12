@@ -28,6 +28,8 @@ from pyccel.ast.core import Pass
 from pyccel.ast.core import FunctionDef
 from pyccel.ast.core import PythonFunction, SympyFunction
 from pyccel.ast.core import ClassDef
+from pyccel.ast.core import Variable
+from pyccel.ast.core import DataClassDef
 from pyccel.ast.core import For, FunctionalFor
 from pyccel.ast.core import If, IfSection
 from pyccel.ast.core import While
@@ -834,20 +836,53 @@ class SyntaxParser(BasicParser):
 
         return func
 
+    def _visit_AnnAssign(self, stmt):
+        value = None
+        if not( stmt.value is None ):
+            raise NotImplementedError('AnnAssign with value not yet available')
+
+        simple = None
+        if not( stmt.simple == 1 ):
+            raise NotImplementedError('AnnAssign with simple != 1 not yet available')
+
+        target = self._visit(stmt.target)
+        annotation = self._visit(stmt.annotation)
+
+        if ( value is None ) and ( simple is None ):
+            return Variable(str(annotation), str(target))
+
+        else:
+            raise NotImplementedError('value is expected to be None, and simple=1')
+
     def _visit_ClassDef(self, stmt):
+        is_dataclass = False
+
+        # ... treat decorators
+        for d in self._visit(stmt.decorator_list):
+            # treat the case of dataclass
+            if d == PyccelSymbol('dataclass'):
+                is_dataclass = True
+
+                stmts = []
+                for s in stmt.body:
+                    new_s = self._visit(s)
+                    stmts.append(new_s)
+
+                attributes = [i for i in stmts if isinstance(i, Variable)]
+        # ...
 
         name = stmt.name
-        methods = [self._visit(i) for i in stmt.body if isinstance(i, ast.FunctionDef)]
-        for i in methods:
-            i.cls_name = name
-        attributes = methods[0].arguments
-        parent = [self._visit(i) for i in stmt.bases]
-        expr = ClassDef(name=name, attributes=attributes,
-                        methods=methods, superclass=parent)
+        # TODO extract methods
+        methods = ()
+        # TODO extract parent
+        parent = None
 
-        # we set the fst to keep track of needed information for errors
+        if is_dataclass:
+            return DataClassDef(name=name, attributes=attributes,
+                            methods=methods, superclass=parent)
 
-        return expr
+        else:
+            raise NotImplementedError('Only dataclass case is available')
 
     def _visit_Subscript(self, stmt):
 
