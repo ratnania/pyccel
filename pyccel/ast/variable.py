@@ -11,6 +11,7 @@ import inspect
 
 from pyccel.errors.errors import Errors
 
+from pyccel.utilities.metaclasses import Singleton
 from .basic     import Basic, PyccelAstNode
 from .datatypes import (datatype, DataType,
                         NativeInteger, NativeBool, NativeReal,
@@ -132,9 +133,9 @@ class Variable(PyccelAstNode):
 
         # ------------ PyccelAstNode Properties ---------------
         if isinstance(dtype, str) or str(dtype) == '*':
-
             dtype = datatype(str(dtype))
-        elif not isinstance(dtype, DataType):
+
+        elif not isinstance(dtype, DataType) and not ( isinstance(dtype, Singleton) and dtype.is_datatype ):
             raise TypeError('datatype must be an instance of DataType.')
 
         if not isinstance(rank, int):

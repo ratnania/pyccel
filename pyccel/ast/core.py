@@ -75,6 +75,7 @@ __all__ = (
     'Return',
     'SeparatorComment',
     'StarredArguments',
+    'StructuredTypeConstructor',
     'StructuredTypeDef',
     'SymbolicAssign',
     'SymbolicPrint',
@@ -2485,6 +2486,41 @@ class StructuredTypeDef(Basic):
     def attributes(self):
         return self._attributes
 
+class StructuredTypeConstructor(Basic):
+
+    """Represents a the call to typed structure constructor
+
+    Parameters
+    ----------
+    TODO
+
+    Examples
+    --------
+    TODO
+    """
+    __slots__ = ('_name','_arguments')
+    _attribute_nodes = ('_name','_arguments')
+
+    def __init__(self, name, arguments=()):
+        self._name = name
+        self._arguments = arguments
+
+        super().__init__()
+
+    def __str__(self):
+        raise NotImplementedError('TODO')
+
+    def __repr__(self):
+        raise NotImplementedError('TODO')
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def arguments(self):
+        return self._arguments
+
 class ClassDef(Basic):
 
     """Represents a class definition.
@@ -2956,7 +2992,7 @@ class Declare(Basic):
         ):
         if isinstance(dtype, str):
             dtype = datatype(dtype)
-        elif not isinstance(dtype, DataType):
+        elif not isinstance(dtype, DataType) and not ( isinstance(dtype, Singleton) and dtype.is_datatype ):
             raise TypeError('datatype must be an instance of DataType.')
 
         if not isinstance(variable, Variable):

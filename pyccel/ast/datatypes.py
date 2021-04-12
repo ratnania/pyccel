@@ -266,7 +266,8 @@ def DataTypeFactory(name, argnames=["_name"],
                 raise TypeError("Argument %s not valid for %s"
                     % (key, self.__class__.__name__))
             setattr(self, key, value)
-        BaseClass.__init__(self, name=name[:-len("Class")])
+#        BaseClass.__init__(self, name=name[:-len("Class")])
+        super().__init__(self, name=name[:-len("Class")])
 
     if prefix is None:
         prefix = 'Pyccel'
@@ -278,6 +279,7 @@ def DataTypeFactory(name, argnames=["_name"],
                      "_name":             name,
                      "prefix":            prefix,
                      "alias":             alias,
+                     "is_datatype":       True,
                      "is_iterable":       is_iterable,
                      "is_with_construct": is_with_construct,
                      "is_polymorphic":    is_polymorphic})

@@ -29,6 +29,7 @@ from pyccel.ast.core import FunctionDef
 from pyccel.ast.core import PythonFunction, SympyFunction
 from pyccel.ast.core import ClassDef
 from pyccel.ast.core import Variable
+from pyccel.ast.core import StructuredTypeConstructor
 from pyccel.ast.core import StructuredTypeDef
 from pyccel.ast.core import For, FunctionalFor
 from pyccel.ast.core import If, IfSection
@@ -877,7 +878,9 @@ class SyntaxParser(BasicParser):
 
         if is_dataclass:
             if not methods:
-                return StructuredTypeDef(name, attributes=attributes)
+                expr = StructuredTypeDef(name, attributes=attributes)
+                self.namespace._classes[name] = expr
+                return expr
 
             else:
                 # TODO extract methods
@@ -941,6 +944,8 @@ class SyntaxParser(BasicParser):
         if isinstance(func, PyccelSymbol):
             if func == "print":
                 func = PythonPrint(PythonTuple(*args))
+            elif func in self.namespace.classes.keys():
+                func = StructuredTypeConstructor(func, args)
             else:
                 func = FunctionCall(func, args)
         elif isinstance(func, DottedName):

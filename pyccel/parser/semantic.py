@@ -34,6 +34,7 @@ from pyccel.ast.core import ValuedFunctionAddress
 from pyccel.ast.core import FunctionDef, Interface, FunctionAddress, FunctionCall
 from pyccel.ast.core import DottedFunctionCall
 from pyccel.ast.core import ClassDef
+from pyccel.ast.core import StructuredTypeConstructor
 from pyccel.ast.core import For, FunctionalFor, ForIterator
 from pyccel.ast.core import While
 from pyccel.ast.core import SymbolicPrint
@@ -782,6 +783,17 @@ class SemanticParser(BasicParser):
             # set target  to True if we want the class objects to be pointers
 
             d_var['cls_base'      ] = cls
+            return d_var
+
+        elif isinstance(expr, StructuredTypeConstructor):
+            dtype = DataTypeFactory(expr.name, '_name')
+
+            d_var['datatype'   ] = dtype
+            d_var['allocatable'] = False
+            d_var['is_pointer' ] = False
+            d_var['shape'      ] = ()
+            d_var['rank'       ] = 0
+
             return d_var
 
         else:
@@ -2847,6 +2859,10 @@ class SemanticParser(BasicParser):
             return SymbolicPrint(_args)
         else:
             return PythonPrint(args)
+
+    def _visit_StructuredTypeConstructor(self, expr, **settings):
+        # TODO check types
+        return expr
 
     def _visit_StructuredTypeDef(self, expr, **settings):
         return expr

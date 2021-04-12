@@ -20,6 +20,7 @@ import operator
 from sympy.core.numbers import NegativeInfinity as NINF
 from sympy.core.numbers import Infinity as INF
 
+from pyccel.utilities.metaclasses import Singleton
 from pyccel.ast.core import get_iterable_ranges
 from pyccel.ast.core import SeparatorComment, Comment
 from pyccel.ast.core import ConstructorCall
@@ -29,6 +30,7 @@ from pyccel.ast.itertoolsext import Product
 from pyccel.ast.core import (Assign, AliasAssign, Declare,
                              CodeBlock, Dlist, AsName,
                              If, IfSection)
+from pyccel.ast.core import StructuredTypeConstructor
 
 from pyccel.ast.variable  import (Variable, TupleVariable,
                              IndexedElement,
@@ -1042,7 +1044,19 @@ class FCodePrinter(CodePrinter):
         # ...
 
         # ... print datatype
-        if isinstance(expr.dtype, CustomDataType):
+        if ( isinstance(expr.dtype, Singleton) and expr.dtype.is_datatype ):
+            dtype = expr.dtype
+
+            name   = dtype._name
+            prefix = dtype.prefix
+            alias  = dtype.alias
+
+            sig = 'type'
+
+            name = name.replace(prefix, '')
+            dtype = '{0}({1})'.format(sig, name)
+
+        elif isinstance(expr.dtype, CustomDataType):
             dtype = expr.dtype
 
             name   = dtype.__class__.__name__
@@ -1281,6 +1295,9 @@ class FCodePrinter(CodePrinter):
 
                 code = 'call {0}({1})\n'.format(rhs_code, call_args)
                 return self._get_statement(code)
+
+        if isinstance(rhs, StructuredTypeConstructor):
+            return ''
 
         if (isinstance(expr.lhs, Variable) and
               expr.lhs.dtype == NativeSymbol()):
