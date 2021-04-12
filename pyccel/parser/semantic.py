@@ -2848,12 +2848,8 @@ class SemanticParser(BasicParser):
         else:
             return PythonPrint(args)
 
-    def _visit_DataClassDef(self, expr, **settings):
-        if not expr.methods:
-            return expr
-
-        else:
-            raise NotImplementedError('methods are not treated yet')
+    def _visit_StructuredTypeDef(self, expr, **settings):
+        return expr
 
     def _visit_ClassDef(self, expr, **settings):
 
