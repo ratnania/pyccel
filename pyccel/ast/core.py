@@ -54,6 +54,7 @@ __all__ = (
     'ConstructorCall',
     'Continue',
     'Declare',
+    'DeclareType',
     'Del',
     'Dlist',
     'DoConcurrent',
@@ -2486,6 +2487,36 @@ class StructuredTypeDef(Basic):
     def attributes(self):
         return self._attributes
 
+class DeclareType(Basic):
+
+    """Represents a the declaration of typed structure constructor
+
+    Parameters
+    ----------
+    TODO
+
+    Examples
+    --------
+    TODO
+    """
+    __slots__ = ('_expr',)
+    _attribute_nodes = ('_expr',)
+
+    def __init__(self, expr):
+        self._expr = expr
+
+        super().__init__()
+
+    def __str__(self):
+        raise NotImplementedError('TODO')
+
+    def __repr__(self):
+        raise NotImplementedError('TODO')
+
+    @property
+    def expr(self):
+        return self._expr
+
 class StructuredTypeConstructor(Basic):
 
     """Represents a the call to typed structure constructor
@@ -2997,6 +3028,7 @@ class Declare(Basic):
 
         if not isinstance(variable, Variable):
             raise TypeError('var must be of type Variable, given {0}'.format(variable))
+
         if variable.dtype != dtype:
             raise ValueError('All variables must have the same dtype')
 
