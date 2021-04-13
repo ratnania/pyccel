@@ -142,6 +142,7 @@ class Variable(PyccelAstNode):
 
         if rank == 0:
             shape = ()
+            order=None
 
         if shape is None:
             shape = tuple(None for i in range(rank))

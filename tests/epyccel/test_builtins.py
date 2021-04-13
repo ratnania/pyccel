@@ -88,6 +88,35 @@ def test_min_2_args_i(language):
 
     assert epyc_f(*int_args) == f(*int_args)
 
+@pytest.mark.parametrize( 'language', (
+        pytest.param("fortran", marks = pytest.mark.fortran),
+        pytest.param("c", marks = [
+            pytest.mark.skip(reason="min not implemented in C for integers"),
+            pytest.mark.c]
+        ),
+        pytest.param("python", marks = pytest.mark.python)
+    )
+)
+def test_min_2_args_i_adhoc(language):
+    def f(x:int):
+        return min(x, 0)
+
+    epyc_f = epyccel(f, language=language)
+
+    int_arg = randint(min_int, max_int)
+
+    assert epyc_f(int_arg) == f(int_arg)
+
+def test_min_2_args_f_adhoc(language):
+    def f(x:float):
+        return min(x, 0.0)
+
+    epyc_f = epyccel(f, language=language)
+
+    float_arg = uniform(min_float /2, max_float/2)
+
+    assert epyc_f(float_arg) == f(float_arg)
+
 def test_min_2_args_f(language):
     @types('float','float')
     def f(x, y):
