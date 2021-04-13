@@ -10,6 +10,7 @@ import operator
 
 from pyccel.ast.builtins  import PythonRange, PythonComplex, PythonEnumerate
 from pyccel.ast.builtins  import PythonZip, PythonMap, PythonLen, PythonPrint
+from pyccel.ast.builtins  import PythonList, PythonTuple
 
 from pyccel.ast.core      import Declare, For, CodeBlock
 from pyccel.ast.core      import FuncAddressDeclare, FunctionCall, FunctionDef
@@ -20,7 +21,7 @@ from pyccel.ast.core      import SeparatorComment
 from pyccel.ast.core      import create_incremented_string
 
 from pyccel.ast.operators import PyccelAdd, PyccelMul, PyccelMinus, PyccelLt, PyccelGt
-from pyccel.ast.operators import PyccelAssociativeParenthesis
+from pyccel.ast.operators import PyccelAssociativeParenthesis, PyccelMod
 from pyccel.ast.operators import PyccelUnarySub, IfTernaryOperator
 
 from pyccel.ast.datatypes import NativeInteger, NativeBool, NativeComplex
@@ -257,6 +258,13 @@ class CCodePrinter(CodePrinter):
         rows, cols = mat.shape
         return ((i, j) for i in range(rows) for j in range(cols))
 
+    def _flatten_list(self, irregular_list):
+        if isinstance(irregular_list, (PythonList, PythonTuple)):
+            f_list = [element for item in irregular_list for element in self._flatten_list(item)]
+            return f_list
+        else:
+            return [irregular_list]
+
     #========================== Numpy Elements ===============================#
     def copy_NumpyArray_Data(self, expr):
         """ print the assignment of a NdArray
@@ -282,7 +290,8 @@ class CCodePrinter(CodePrinter):
         arg = rhs.arg
         if rhs.rank > 1:
             # flattening the args to use them in C initialization.
-            arg = functools.reduce(operator.concat, arg)
+            arg = self._flatten_list(arg)
+
         if isinstance(arg, Variable):
             arg = self._print(arg)
             if expr.lhs.is_stack_array:
@@ -323,7 +332,9 @@ class CCodePrinter(CodePrinter):
             sympy_shapes = [pyccel_to_sympy(s, symbol_map, used_names_tmp) for s in lhs.alloc_shape]
 
             length = functools.reduce(operator.mul, sympy_shapes)
-            length_code = '*'.join(self._print(i) for i in lhs.alloc_shape)
+            printable_length = functools.reduce(PyccelMul, lhs.alloc_shape)
+
+            length_code = self._print(printable_length)
 
             if length.is_constant():
                 buffer_array = "({declare_dtype}[{length}]){{}}".format(
@@ -1175,6 +1186,9 @@ class CCodePrinter(CodePrinter):
 
     def _print_NumpyRandint(self, expr):
         raise NotImplementedError("Randint not implemented")
+
+    def _print_NumpyMod(self, expr):
+        return self._print(PyccelMod(*expr.args))
 
     def _print_Interface(self, expr):
         return ""

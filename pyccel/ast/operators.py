@@ -88,8 +88,10 @@ def broadcast(shape_1, shape_2):
                 and not (sy_e1 - sy_e2).is_constant():
             new_shape.append(e1)
         else:
+            shape1_code = '({})'.format(' '.join([str(s)+',' for s in shape_1]))
+            shape2_code = '({})'.format(' '.join([str(s)+',' for s in shape_2]))
             msg = 'operands could not be broadcast together with shapes {} {}'
-            msg = msg.format(shape_1, shape_2)
+            msg = msg.format(shape1_code, shape2_code)
             raise PyccelSemanticError(msg)
     return tuple(new_shape)
 

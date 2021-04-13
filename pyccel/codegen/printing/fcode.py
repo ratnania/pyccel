@@ -35,6 +35,7 @@ from pyccel.ast.variable  import (Variable, TupleVariable,
                              DottedName, PyccelArraySize)
 
 from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus, PyccelNot
+from pyccel.ast.operators      import PyccelMod
 
 from pyccel.ast.operators      import PyccelUnarySub, PyccelLt, PyccelGt, IfTernaryOperator
 
@@ -760,6 +761,9 @@ class FCodePrinter(CodePrinter):
 
         return code
 
+    def _print_NumpyMod(self, expr):
+        return self._print(PyccelMod(*expr.args))
+
     # ======================================================================= #
     def _print_PyccelArraySize(self, expr):
         init_value = self._print(expr.arg)
@@ -1235,12 +1239,6 @@ class FCodePrinter(CodePrinter):
 
         if isinstance(rhs, NumpyEmpty):
             return ''
-
-        if isinstance(rhs, NumpyMod):
-            lhs = self._print(expr.lhs)
-            args = ','.join(self._print(i) for i in rhs.args)
-            rhs  = 'modulo({})'.format(args)
-            return '{0} = {1}\n'.format(lhs, rhs)
 
         if isinstance(rhs, ConstructorCall):
             func = rhs.func
@@ -2465,7 +2463,7 @@ class FCodePrinter(CodePrinter):
         try:
             func_name = numpy_ufunc_to_fortran[type_name]
         except KeyError:
-            errors.report(PYCCEL_RESTRICTION_TODO, severity='fatal')
+            self._print_not_supported(expr)
         args = [self._print(NumpyFloat(a) if a.dtype is NativeInteger() else a)\
 				for a in expr.args]
         code_args = ', '.join(args)

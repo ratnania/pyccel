@@ -130,40 +130,6 @@ class Variable(PyccelAstNode):
         ):
         super().__init__()
 
-        # ------------ PyccelAstNode Properties ---------------
-        if isinstance(dtype, str) or str(dtype) == '*':
-
-            dtype = datatype(str(dtype))
-        elif not isinstance(dtype, DataType):
-            raise TypeError('datatype must be an instance of DataType.')
-
-        if not isinstance(rank, int):
-            raise TypeError('rank must be an instance of int.')
-
-        if rank == 0:
-            shape = ()
-
-        if shape is None:
-            shape = tuple(None for i in range(rank))
-
-        if not precision:
-            if isinstance(dtype, NativeInteger):
-                precision = default_precision['int']
-            elif isinstance(dtype, NativeReal):
-                precision = default_precision['real']
-            elif isinstance(dtype, NativeComplex):
-                precision = default_precision['complex']
-            elif isinstance(dtype, NativeBool):
-                precision = default_precision['bool']
-        if not isinstance(precision,int) and precision is not None:
-            raise TypeError('precision must be an integer or None.')
-
-        self._alloc_shape = shape
-        self._dtype = dtype
-        self._rank  = rank
-        self._shape = self.process_shape(shape)
-        self._precision = precision
-
         # ------------ Variable Properties ---------------
         # if class attribute
         if isinstance(name, str):
@@ -214,6 +180,40 @@ class Variable(PyccelAstNode):
         self._is_kwonly      = is_kwonly
         self._is_temp        = is_temp
 
+        # ------------ PyccelAstNode Properties ---------------
+        if isinstance(dtype, str) or str(dtype) == '*':
+
+            dtype = datatype(str(dtype))
+        elif not isinstance(dtype, DataType):
+            raise TypeError('datatype must be an instance of DataType.')
+
+        if not isinstance(rank, int):
+            raise TypeError('rank must be an instance of int.')
+
+        if rank == 0:
+            shape = ()
+
+        if shape is None:
+            shape = tuple(None for i in range(rank))
+
+        if not precision:
+            if isinstance(dtype, NativeInteger):
+                precision = default_precision['int']
+            elif isinstance(dtype, NativeReal):
+                precision = default_precision['real']
+            elif isinstance(dtype, NativeComplex):
+                precision = default_precision['complex']
+            elif isinstance(dtype, NativeBool):
+                precision = default_precision['bool']
+        if not isinstance(precision,int) and precision is not None:
+            raise TypeError('precision must be an integer or None.')
+
+        self._alloc_shape = shape
+        self._dtype = dtype
+        self._rank  = rank
+        self._shape = self.process_shape(shape)
+        self._precision = precision
+
     def process_shape(self, shape):
         """ Simplify the provided shape and ensure it
         has the expected format
@@ -230,7 +230,10 @@ class Variable(PyccelAstNode):
 
         new_shape = []
         for i,s in enumerate(shape):
-            if isinstance(s,(LiteralInteger, PyccelArraySize)):
+            if self.is_pointer:
+                # Shape of a pointer can change
+                new_shape.append(PyccelArraySize(self, LiteralInteger(i)))
+            elif isinstance(s,(LiteralInteger, PyccelArraySize)):
                 new_shape.append(s)
             elif isinstance(s, int):
                 new_shape.append(LiteralInteger(s))

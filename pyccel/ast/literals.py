@@ -49,6 +49,9 @@ class Literal(PyccelAstNode):
     def python_value(self):
         """ Get python literal represented by this instance """
 
+    def __repr__(self):
+        return "Literal({})".format(repr(self.python_value))
+
     def __str__(self):
         return str(self.python_value)
 

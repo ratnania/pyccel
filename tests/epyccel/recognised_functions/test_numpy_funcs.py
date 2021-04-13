@@ -4071,13 +4071,10 @@ def test_numpy_imag_array_like_2d(language):
     assert epyccel_func(cmplx128) == get_imag(cmplx128)
 
 @pytest.mark.parametrize( 'language', (
-        pytest.param("fortran", marks = [pytest.mark.fortran]),
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="Needs a C printer see https://github.com/pyccel/pyccel/issues/791"),
-            pytest.mark.c]
-        ),
+        pytest.param("fortran", marks = pytest.mark.fortran),
+        pytest.param("c", marks = pytest.mark.c),
         pytest.param("python", marks = [
-            pytest.mark.skip(reason=("mod handles types in __new__ so it "
+            pytest.mark.skip(reason=("mod has special treatment for bool so it "
                 "cannot be used in a translated interface in python")),
             pytest.mark.python]
         )
@@ -4119,14 +4116,9 @@ def test_numpy_mod_scalar(language):
     f_bl_true_output = epyccel_func(True)
     test_bool_true_output = get_mod(True)
 
-    f_bl_false_output = epyccel_func(False)
-    test_bool_false_output = get_mod(False)
-
     assert f_bl_true_output == test_bool_true_output
-    assert f_bl_false_output == test_bool_false_output
 
     assert matching_types(f_bl_true_output, test_bool_true_output)
-    assert matching_types(f_bl_false_output, test_bool_false_output)
 
     f_integer_output = epyccel_func(integer)
     test_int_output  = get_mod(integer)
@@ -4180,12 +4172,9 @@ def test_numpy_mod_scalar(language):
 
 @pytest.mark.parametrize( 'language', (
         pytest.param("fortran", marks = [pytest.mark.fortran]),
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="Needs a C printer see https://github.com/pyccel/pyccel/issues/791"),
-            pytest.mark.c]
-        ),
+        pytest.param("c", marks = pytest.mark.c),
         pytest.param("python", marks = [
-            pytest.mark.skip(reason=("mod handles types in __new__ so it "
+            pytest.mark.skip(reason=("mod has special treatment for bool so it "
                 "cannot be used in a translated interface in python")),
             pytest.mark.python]
         )
@@ -4206,12 +4195,14 @@ def test_numpy_mod_array_like_1d(language):
     def get_mod(arr):
         from numpy import mod, shape
         a = mod(arr, arr)
-        s = shape(a)
-        return len(s), s[0], a[0]
+        return shape(a)[0], a[0], a[1]
+        # Tuples not implemented yet, once be implemented we can use:
+        # s = shape(a)
+        # return len(s), s[0], a[0]
 
     size = 5
 
-    bl = randint(0, 1, size=size, dtype= bool)
+    bl = np.full(size, True, dtype= bool)
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
@@ -4240,12 +4231,9 @@ def test_numpy_mod_array_like_1d(language):
 
 @pytest.mark.parametrize( 'language', (
         pytest.param("fortran", marks = [pytest.mark.fortran]),
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="Needs a C printer see https://github.com/pyccel/pyccel/issues/791"),
-            pytest.mark.c]
-        ),
+        pytest.param("c", marks = pytest.mark.c),
         pytest.param("python", marks = [
-            pytest.mark.skip(reason=("mod handles types in __new__ so it "
+            pytest.mark.skip(reason=("mod has special treatment for bool so it "
                 "cannot be used in a translated interface in python")),
             pytest.mark.python]
         )
@@ -4266,12 +4254,14 @@ def test_numpy_mod_array_like_2d(language):
     def get_mod(arr):
         from numpy import mod, shape
         a = mod(arr, arr)
-        s = shape(a)
-        return len(s), s[0], s[1], a[0,1], a[1,0]
+        return shape(a)[0], shape(a)[1], a[0,1], a[1,0]
+        # Tuples not implemented yet, once be implemented we can use:
+        # s = shape(a)
+        # return len(s), s[0], s[1], a[0,1], a[1,0]
 
     size = (2, 5)
 
-    bl = randint(0, 1, size=size, dtype= bool)
+    bl = np.full(size, True, dtype= bool)
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
