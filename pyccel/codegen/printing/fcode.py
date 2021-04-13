@@ -31,6 +31,7 @@ from pyccel.ast.core import (Assign, AliasAssign, Declare,
                              CodeBlock, Dlist, AsName,
                              If, IfSection)
 from pyccel.ast.core import StructuredTypeConstructor
+from pyccel.ast.core import DeclareType
 
 from pyccel.ast.variable  import (Variable, TupleVariable,
                              IndexedElement,
@@ -357,6 +358,12 @@ class FCodePrinter(CodePrinter):
         #  - pyccel-generated variables added to Scope when printing 'expr.body'
         variables = self.parser.get_variables(self._namespace)
         decs = ''.join(self._print_Declare(Declare(v.dtype, v)) for v in variables)
+
+        # Print user defined types
+        classes = self.parser.get_classes(self._namespace)
+        dec_classes = [DeclareType(c) for c in classes]
+        dec_classes = ''.join(self._print_DeclareType(c) for c in dec_classes)
+        decs = dec_classes + '\n' + decs
 
         # Detect if we are using mpi4py
         # TODO should we find a better way to do this?
@@ -1690,6 +1697,10 @@ class FCodePrinter(CodePrinter):
         return code + '\n'
 
     def _print_StructuredTypeDef(self, expr):
+        return ''
+
+    def _print_DeclareType(self, expr):
+        expr = expr.expr
 
         # ... declarations
         decs = []
