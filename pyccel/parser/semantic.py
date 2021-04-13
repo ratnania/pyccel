@@ -371,6 +371,15 @@ class SemanticParser(BasicParser):
             container = container.parent_scope
         return None
 
+    def get_classes(self, container):
+        # this only works if called on a function scope
+        # TODO needs more tests when we have nested functions
+        classes = []
+        classes.extend(container.classes.values())
+        for container in container.loops:
+            classes.extend(self.get_classes(container))
+        return classes
+
     def insert_variable(self, var, name=None):
         """."""
 
