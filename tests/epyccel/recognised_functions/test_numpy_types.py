@@ -30,7 +30,7 @@ def test_numpy_bool_scalar(language):
 
     integer8 = randint(min_int8, max_int8, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, dtype=np.int16)
-    integer = randint(min_int, max_int, dtype=np.int)
+    integer = randint(min_int, max_int, dtype=int)
     integer32 = randint(min_int32, max_int32, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, dtype=np.int64)
 
@@ -180,7 +180,7 @@ def test_numpy_int_scalar(language, function_boundaries):
 
     integer8 = randint(min_int8, max_int8, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, dtype=np.int16)
-    integer = randint(min_int, max_int, dtype=np.int)
+    integer = randint(min_int, max_int, dtype=int)
     integer32 = randint(min_int32, max_int32, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, dtype=np.int64)
 
@@ -341,7 +341,7 @@ def test_numpy_int_array_like_1d(language, function_boundaries):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -453,7 +453,7 @@ def test_numpy_int_array_like_2d(language, function_boundaries):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -530,7 +530,7 @@ def test_numpy_float_scalar(language, get_float):
 
     integer8 = randint(min_int8, max_int8, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, dtype=np.int16)
-    integer = randint(min_int, max_int, dtype=np.int)
+    integer = randint(min_int, max_int, dtype=int)
     integer32 = randint(min_int32, max_int32, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, dtype=np.int64)
 
@@ -656,7 +656,7 @@ def test_numpy_float_array_like_1d(language, get_float):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -730,7 +730,7 @@ def test_numpy_float_array_like_2d(language, get_float):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -771,7 +771,7 @@ def test_numpy_double_scalar(language):
 
     integer8 = randint(min_int8, max_int8, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, dtype=np.int16)
-    integer = randint(min_int, max_int, dtype=np.int)
+    integer = randint(min_int, max_int, dtype=int)
     integer32 = randint(min_int32, max_int32, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, dtype=np.int64)
 
@@ -881,7 +881,7 @@ def test_numpy_double_array_like_1d(language):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -939,7 +939,7 @@ def test_numpy_double_array_like_2d(language):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -991,12 +991,22 @@ def get_complex128(a):
     b = complex128(a)
     return b
 
+@pytest.mark.parametrize( 'language', (
+        pytest.param("fortran", marks = [pytest.mark.fortran]),
+        pytest.param("c", marks = [pytest.mark.c]),
+        pytest.param("python", marks = [
+            pytest.mark.skip(reason=("complex handles types in __new__ so it "
+                "cannot be used in a translated interface in python. See #802")),
+            pytest.mark.python]
+        )
+    )
+)
 @pytest.mark.parametrize( 'get_complex', [get_complex128, get_complex64])
 def test_numpy_complex_scalar(language, get_complex):
 
     integer8 = randint(min_int8, max_int8, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, dtype=np.int16)
-    integer = randint(min_int, max_int, dtype=np.int)
+    integer = randint(min_int, max_int, dtype=int)
     integer32 = randint(min_int32, max_int32, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, dtype=np.int64)
 
@@ -1085,22 +1095,22 @@ def get_complex128_arr_1d(arr):
     from numpy import complex128, shape
     a = complex128(arr)
     s = shape(a)
-    return len(s), s[0], s[1], a[0,0], a[0,1]
+    return len(s), s[0], a[0], a[1]
 
-@types('bool[:,:]')
-@types('int[:,:]')
-@types('int8[:,:]')
-@types('int16[:,:]')
-@types('int32[:,:]')
-@types('int64[:,:]')
-@types('float[:,:]')
-@types('float32[:,:]')
-@types('float64[:,:]')
+@types('bool[:]')
+@types('int[:]')
+@types('int8[:]')
+@types('int16[:]')
+@types('int32[:]')
+@types('int64[:]')
+@types('float[:]')
+@types('float32[:]')
+@types('float64[:]')
 def get_complex64_arr_1d(arr):
     from numpy import complex64, shape
     a = complex64(arr)
     s = shape(a)
-    return len(s), s[0], s[1], a[0,0], a[0,1]
+    return len(s), s[0], a[0], a[1]
 
 @types('bool[:,:]')
 @types('int[:,:]')
@@ -1132,22 +1142,20 @@ def get_complex64_arr_2d(arr):
     s = shape(a)
     return len(s), s[0], s[1], a[0,0], a[0,1]
 
+
 @pytest.mark.parametrize( 'language', (
-        pytest.param("fortran", marks = [
-            pytest.mark.skip(reason="AttributeError: _dtype"),
-            pytest.mark.fortran]
-        ),
+        pytest.param("fortran", marks = [pytest.mark.fortran]),
         pytest.param("c", marks = [
-            pytest.mark.skip(reason="Arrays not handled yet."),
+            pytest.mark.skip(reason="Tuples not handled yet."),
             pytest.mark.c]
         ),
         pytest.param("python", marks = [
-            pytest.mark.skip(reason="AttributeError: _dtype"),
+            pytest.mark.skip(reason=("complex handles types in __new__ so it "
+                "cannot be used in a translated interface in python. See #802")),
             pytest.mark.python]
         )
     )
 )
-
 @pytest.mark.parametrize( 'get_complex', [get_complex128_arr_1d, get_complex64_arr_1d])
 def test_numpy_complex_array_like_1d(language, get_complex):
 
@@ -1157,7 +1165,7 @@ def test_numpy_complex_array_like_1d(language, get_complex):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 
@@ -1181,21 +1189,18 @@ def test_numpy_complex_array_like_1d(language, get_complex):
     assert epyccel_func(fl32) == get_complex(fl32)
 
 @pytest.mark.parametrize( 'language', (
-        pytest.param("fortran", marks = [
-            pytest.mark.skip(reason="AttributeError: _dtype"),
-            pytest.mark.fortran]
-        ),
+        pytest.param("fortran", marks = [pytest.mark.fortran]),
         pytest.param("c", marks = [
-            pytest.mark.skip(reason="Arrays not handled yet."),
+            pytest.mark.skip(reason="Tuples not handled yet."),
             pytest.mark.c]
         ),
         pytest.param("python", marks = [
-            pytest.mark.skip(reason="AttributeError: _dtype"),
+            pytest.mark.skip(reason=("complex handles types in __new__ so it "
+                "cannot be used in a translated interface in python. See #802")),
             pytest.mark.python]
         )
     )
 )
-
 @pytest.mark.parametrize( 'get_complex', [get_complex128_arr_2d, get_complex64_arr_2d])
 def test_numpy_complex_array_like_2d(language, get_complex):
 
@@ -1205,7 +1210,7 @@ def test_numpy_complex_array_like_2d(language, get_complex):
 
     integer8 = randint(min_int8, max_int8, size=size, dtype=np.int8)
     integer16 = randint(min_int16, max_int16, size=size, dtype=np.int16)
-    integer = randint(min_int, max_int, size=size, dtype=np.int)
+    integer = randint(min_int, max_int, size=size, dtype=int)
     integer32 = randint(min_int32, max_int32, size=size, dtype=np.int32)
     integer64 = randint(min_int64, max_int64, size=size, dtype=np.int64)
 

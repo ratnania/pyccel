@@ -204,13 +204,6 @@ def test_modules_16(language):
 
     assert f1() == 0 # omp_get_max_task_priority() return always 0
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.xfail(reason="len not implemented in C !"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_omp_matmul(language):
     f1 = epyccel(openmp.omp_matmul, accelerator='openmp', language=language)
     set_num_threads = epyccel(openmp.set_num_threads, accelerator='openmp', language=language)
@@ -252,13 +245,6 @@ def test_omp_matmul_single(language):
 
     assert np.array_equal(y1, y2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.xfail(reason="len not implemented in C !"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_omp_matmul_2d_2d(language):
     f1 = epyccel(openmp.omp_matmul, accelerator='openmp', language=language)
     set_num_threads = epyccel(openmp.set_num_threads, accelerator='openmp', language=language)

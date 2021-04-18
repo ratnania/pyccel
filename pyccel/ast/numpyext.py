@@ -89,28 +89,15 @@ __all__ = (
 )
 
 #=======================================================================================
-class NumpyComplex(PythonComplex):
-    """ Represents a call to numpy.complex() function.
-    """
-    __slots__ = ()
-
-class NumpyComplex64(NumpyComplex):
-    """ Represents a call to numpy.complex64() function.
-    """
-    __slots__ = ()
-    _precision = dtype_registry['complex64'][1]
-
-class NumpyComplex128(NumpyComplex):
-    """ Represents a call to numpy.complex128() function.
-    """
-    __slots__ = ()
-    _precision = dtype_registry['complex128'][1]
-
-#=======================================================================================
 class NumpyFloat(PythonFloat):
     """ Represents a call to numpy.float() function.
     """
-    __slots__ = ()
+    __slots__ = ('_rank','_shape','_order')
+    def __init__(self, arg):
+        self._shape = arg.shape
+        self._rank  = arg.rank
+        self._order = arg.order
+        super().__init__(arg)
 
 class NumpyFloat32(NumpyFloat):
     """ Represents a call to numpy.float32() function.
@@ -128,17 +115,24 @@ class NumpyFloat64(NumpyFloat):
 class NumpyBool(PythonBool):
     """ Represents a call to numpy.bool() function.
     """
-    def __new__(cls, arg=None, base=10):
-        return super().__new__(cls, arg)
+    __slots__ = ('_shape','_rank','_order')
+    def __init__(self, arg):
+        self._shape = arg.shape
+        self._rank  = arg.rank
+        self._order = arg.order
+        super().__init__(arg)
 
 #=======================================================================================
 # TODO [YG, 13.03.2020]: handle case where base != 10
 class NumpyInt(PythonInt):
     """ Represents a call to numpy.int() function.
     """
-    __slots__ = ()
-    def __new__(cls, arg=None, base=10):
-        return super().__new__(cls, arg)
+    __slots__ = ('_shape','_rank','_order')
+    def __init__(self, arg=None, base=10):
+        self._shape = arg.shape
+        self._rank  = arg.rank
+        self._order = arg.order
+        super().__init__(arg)
 
 class NumpyInt8(NumpyInt):
     """ Represents a call to numpy.int8() function.
@@ -171,6 +165,12 @@ class NumpyReal(PythonReal):
     1.0
     """
     __slots__ = ('_rank','_shape','_order')
+    def __new__(cls, arg):
+        if isinstance(arg.dtype, NativeBool):
+            return NumpyInt(arg)
+        else:
+            return super().__new__(cls, arg)
+
     def __init__(self, arg):
         super().__init__(arg)
         self._precision = arg.precision
@@ -185,6 +185,65 @@ class NumpyReal(PythonReal):
         """
         return True
 
+#==============================================================================
+
+class NumpyImag(PythonImag):
+    """Represents a call to  numpy.imag for code generation.
+
+    > a = 1+2j
+    > np.imag(a)
+    2.0
+    """
+    __slots__ = ('_rank','_shape','_order')
+    def __new__(cls, arg):
+        if not isinstance(arg.dtype, NativeComplex):
+            dtype=NativeInteger() if isinstance(arg.dtype, NativeBool) else arg.dtype
+            if arg.rank == 0:
+                return convert_to_literal(0, dtype, arg.precision)
+            return NumpyZeros(arg.shape, dtype=dtype)
+        return super().__new__(cls, arg)
+
+    def __init__(self, arg):
+        super().__init__(arg)
+        self._precision = arg.precision
+        self._order = arg.order
+        self._shape = self.internal_var.shape
+        self._rank  = len(self._shape)
+
+    @property
+    def is_elemental(self):
+        """ Indicates whether the function should be
+        called elementwise for an array argument
+        """
+        return True
+
+#=======================================================================================
+class NumpyComplex(PythonComplex):
+    """ Represents a call to numpy.complex() function.
+    """
+    _real_cast = NumpyReal
+    _imag_cast = NumpyImag
+    __slots__ = ('_rank','_shape','_order')
+    def __init__(self, arg0, arg1 = None):
+        if arg1 is not None:
+            raise NotImplementedError("Use builtin complex function not deprecated np.complex")
+        self._shape = arg0.shape
+        self._rank  = arg0.rank
+        self._order = arg0.order
+        super().__init__(arg0)
+
+class NumpyComplex64(NumpyComplex):
+    """ Represents a call to numpy.complex64() function.
+    """
+    __slots__ = ()
+    _precision = dtype_registry['complex64'][1]
+
+class NumpyComplex128(NumpyComplex):
+    """ Represents a call to numpy.complex128() function.
+    """
+    __slots__ = ()
+    _precision = dtype_registry['complex128'][1]
+
 DtypePrecisionToCastFunction = {
     'Int' : {
         1 : NumpyInt8,
@@ -196,10 +255,10 @@ DtypePrecisionToCastFunction = {
         8 : NumpyFloat64},
     'Complex' : {
         4 : NumpyComplex64,
-        8 : PythonComplex,
+        8 : NumpyComplex,
         16 : NumpyComplex128,},
     'Bool':  {
-        4 : PythonBool}
+        4 : NumpyBool}
 }
 
 #==============================================================================
@@ -396,7 +455,7 @@ class NumpyProduct(PyccelInternalFunction):
             raise TypeError('Unknown type of  %s.' % type(arg))
         super().__init__(arg)
         self._arg = PythonList(arg) if arg.rank == 0 else self._args[0]
-        self._arg = PythonInt(self._arg) if (isinstance(arg.dtype, NativeBool) or \
+        self._arg = NumpyInt(self._arg) if (isinstance(arg.dtype, NativeBool) or \
                     (isinstance(arg.dtype, NativeInteger) and self._arg.precision < default_precision['int']))\
                     else self._arg
         self._dtype = self._arg.dtype
@@ -470,38 +529,6 @@ def Shape(arg):
         return arg.shape
     else:
         return PythonTuple(*arg.shape)
-
-#==============================================================================
-
-class NumpyImag(PythonImag):
-    """Represents a call to  numpy.imag for code generation.
-
-    > a = 1+2j
-    > np.imag(a)
-    2.0
-    """
-    __slots__ = ('_rank','_shape','_order')
-    def __new__(cls, arg):
-        if not isinstance(arg.dtype, NativeComplex):
-            dtype=NativeInteger() if isinstance(arg.dtype, NativeBool) else arg.dtype
-            if arg.rank == 0:
-                return convert_to_literal(0, dtype, arg.precision)
-            return NumpyZeros(arg.shape, dtype=dtype)
-        return super().__new__(cls, arg)
-
-    def __init__(self, arg):
-        super().__init__(arg)
-        self._precision = arg.precision
-        self._order = arg.order
-        self._shape = self.internal_var.shape
-        self._rank  = len(self._shape)
-
-    @property
-    def is_elemental(self):
-        """ Indicates whether the function should be
-        called elementwise for an array argument
-        """
-        return True
 
 #==============================================================================
 class NumpyLinspace(NumpyNewArray):
@@ -824,7 +851,7 @@ class NumpyNorm(PyccelInternalFunction):
     def __init__(self, arg, axis=None):
         super().__init__(arg, axis)
         if not isinstance(arg.dtype, (NativeComplex, NativeReal)):
-            arg = PythonFloat(arg)
+            arg = NumpyFloat(arg)
         self._arg = PythonList(arg) if arg.rank == 0 else arg
         self._precision = arg.precision
         if self.axis is not None:
@@ -1008,8 +1035,8 @@ class NumpyMod(NumpyUfuncBinary):
 
     def __init__(self, x1, x2):
         super().__init__(x1, x2)
-        x1 = PythonInt(x1) if isinstance(x1.dtype, NativeBool) else x1
-        x2 = PythonInt(x2) if isinstance(x2.dtype, NativeBool) else x2
+        x1 = NumpyInt(x1) if isinstance(x1.dtype, NativeBool) else x1
+        x2 = NumpyInt(x2) if isinstance(x2.dtype, NativeBool) else x2
         self._args = (x1, x2)
 
     def _set_shape_rank(self, x1, x2):

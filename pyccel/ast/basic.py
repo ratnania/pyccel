@@ -244,13 +244,17 @@ class Basic:
         if not isinstance(fst, ast.AST):
             raise TypeError("Fst must be an AST object, not {}".format(type(fst)))
 
-        if not hasattr(fst, 'lineno'):
-            # Handle module object
-            fst.lineno     = 1
-            fst.col_offset = 1
-        # # if not self._fst:
-        # #     self._fst = []
-        self._fst.append(fst)
+        if self.fst:
+            if hasattr(fst, 'lineno'):
+                if self.fst.lineno != fst.lineno or self.fst.col_offset != fst.col_offset:
+                    self._fst.append(fst)
+        else:
+            if not hasattr(fst, 'lineno'):
+                # Handle module object
+                fst.lineno     = 1
+                fst.col_offset = 1
+
+            self._fst.append(fst)
 
     @property
     def fst(self):
@@ -348,4 +352,3 @@ class PyccelAstNode(Basic):
         self._dtype     = x.dtype
         self._precision = x.precision
         self._order     = x.order
-

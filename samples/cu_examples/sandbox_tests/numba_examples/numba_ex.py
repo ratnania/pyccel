@@ -23,4 +23,4 @@ increment_by_one[1000, 100](d_arr)
 
 result_array = d_arr.copy_to_host()
 for i in range(5):
-    print(result_array[i])
+    print(d_arr[i])

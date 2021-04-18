@@ -120,10 +120,6 @@ In an Administrator prompt install git-bash (if needed), a Python3 Anaconda dist
   choco install anaconda3
   choco install mingw
 
-Open git-bash as Administrator. Change default C compiler from M$ to mingw in Anaconda::
-
-  echo -e "[build]\ncompiler = mingw32" > /c/tools/Anaconda3/Lib/distutils/distutils.cfg
-
 Download x64 BLAS and LAPACK DLLs from https://icl.cs.utk.edu/lapack-for-windows/lapack/::
 
   WEB_ADDRESS=https://icl.cs.utk.edu/lapack-for-windows/libraries/VisualStudio/3.7.0/Dynamic-MINGW/Win64

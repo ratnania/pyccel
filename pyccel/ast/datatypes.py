@@ -121,6 +121,9 @@ class DataType(metaclass=Singleton):
     def __str__(self):
         return str(self.name).lower()
 
+    def __repr__(self):
+        return str(self.__class__.__name__)+'()'
+
 class NativeBool(DataType):
     __slots__ = ()
     _name = 'Bool'

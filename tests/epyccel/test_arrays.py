@@ -1110,13 +1110,6 @@ def test_array_real_3d_C_array_initialization_1(language):
 
     assert np.array_equal(x1, x2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="array function doesn't handle 3d lists. See #751"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_array_real_3d_C_array_initialization_2(language):
 
     f1 = arrays.array_real_3d_C_array_initialization_2
@@ -1307,13 +1300,6 @@ def test_array_real_3d_F_array_initialization_1(language):
 
     assert np.array_equal(x1, x2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="array function doesn't handle 3d lists. See #751"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_array_real_3d_F_array_initialization_2(language):
 
     f1 = arrays.array_real_3d_F_array_initialization_2
@@ -1331,7 +1317,8 @@ def test_array_real_3d_F_array_initialization_2(language):
         pytest.param("c", marks = [
             pytest.mark.skip(reason="array function doesn't handle list of variables. See #752"),
             pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
+        pytest.param("fortran", marks = pytest.mark.fortran),
+        pytest.param("python", marks = pytest.mark.python)
     ]
 )
 def test_array_real_4d_F_array_initialization(language):
@@ -1351,14 +1338,7 @@ def test_array_real_4d_F_array_initialization(language):
 
     assert np.array_equal(x1, x2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="array function doesn't handle 4d lists or variables. See #751 and #752"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
-@pytest.mark.xfail
+@pytest.mark.xfail(reason='Inhomogeneous arguments due to unknown shape')
 def test_array_real_4d_F_array_initialization_mixed_ordering(language):
 
     f1 = arrays.array_real_4d_F_array_initialization_mixed_ordering
@@ -1683,7 +1663,17 @@ def test_array_real_2d_2d_matmul_F_F_F_F(language):
     f2(A2, B2, C2)
     assert np.array_equal(C1, C2)
 
-@pytest.mark.xfail(reason="Should fail as long as mixed order not supported, see #244")
+@pytest.mark.parametrize( 'language', [
+        pytest.param("c", marks = [
+            pytest.mark.skip(reason="matmul not implemented in c"),
+            pytest.mark.c]),
+        pytest.param("fortran", marks = [
+            pytest.mark.fortran,
+            pytest.mark.skip(reason="Should fail as long as mixed order not supported, see #244")
+            ]),
+        pytest.param("python", marks = pytest.mark.python)
+    ]
+)
 def test_array_real_2d_2d_matmul_mixorder(language):
     f1 = arrays.array_real_2d_2d_matmul_mixorder
     f2 = epyccel( f1 , language = language)
@@ -1698,13 +1688,6 @@ def test_array_real_2d_2d_matmul_mixorder(language):
     f2(A2, B2, C2)
     assert np.array_equal(C1, C2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="len not implemented in c"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_array_real_loopdiff(language):
     f1 = arrays.array_real_loopdiff
     f2 = epyccel( f1 , language = language)

@@ -165,7 +165,7 @@ def test_optional_args_1d(language):
             x[:] = x // y
     f = epyccel(f12, language = language)
 
-    x1 = np.array( [1,2,3], dtype=np.int )
+    x1 = np.array( [1,2,3], dtype=int )
     x2 = np.copy(x1)
     f(x1)
     f12(x2)

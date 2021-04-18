@@ -996,14 +996,14 @@ class CWrapperCodePrinter(CCodePrinter):
             static_funcs = [as_static_function_call(f, expr.name) for f in expr.funcs]
         else:
             static_funcs = expr.funcs
-        function_signatures = '\n'.join('{};'.format(self.function_signature(f)) for f in static_funcs)
+        function_signatures = ''.join('{};\n'.format(self.function_signature(f)) for f in static_funcs)
 
         interface_funcs = [f.name for i in expr.interfaces for f in i.functions]
         funcs = [*expr.interfaces, *(f for f in expr.funcs if f.name not in interface_funcs)]
 
 
-        function_defs = '\n\n'.join(self._print(f) for f in funcs)
-        cast_functions = '\n\n'.join(CCodePrinter._print_FunctionDef(self, f)
+        function_defs = '\n'.join(self._print(f) for f in funcs)
+        cast_functions = '\n'.join(CCodePrinter._print_FunctionDef(self, f)
                                        for f in self._cast_functions_dict.values())
         method_def_func = ',\n'.join(('{{\n'
                                      '"{name}",\n'
@@ -1021,7 +1021,7 @@ class CWrapperCodePrinter(CCodePrinter):
         method_def = ('static PyMethodDef {method_def_name}[] = {{\n'
                         '{method_def_func},\n'
                         '{{ NULL, NULL, 0, NULL}}\n'
-                        '}};'.format(method_def_name = method_def_name ,method_def_func = method_def_func))
+                        '}};\n'.format(method_def_name = method_def_name ,method_def_func = method_def_func))
 
         module_def_name = self.get_new_name(self._global_names, '{}_module'.format(expr.name))
         module_def = ('static struct PyModuleDef {module_def_name} = {{\n'
@@ -1033,40 +1033,40 @@ class CWrapperCodePrinter(CCodePrinter):
                 '/* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */\n'
                 '-1,\n'
                 '{method_def_name}\n'
-                '}};'.format(module_def_name = module_def_name, mod_name = expr.name, method_def_name = method_def_name))
+                '}};\n'.format(module_def_name = module_def_name, mod_name = expr.name, method_def_name = method_def_name))
 
         init_func = ('PyMODINIT_FUNC PyInit_{mod_name}(void)\n{{\n'
-                'PyObject *m;\n\n'
-                'import_array();\n\n'
+                'PyObject *m;\n'
+                'import_array();\n'
                 'm = PyModule_Create(&{module_def_name});\n'
-                'if (m == NULL) return NULL;\n\n'
-                'return m;\n}}'.format(mod_name=expr.name, module_def_name = module_def_name))
+                'if (m == NULL) return NULL;\n'
+                'return m;\n}}\n'.format(mod_name=expr.name, module_def_name = module_def_name))
 
         # Print imports last to be sure that all additional_imports have been collected
         imports  = [Import(s) for s in self._additional_imports]
         imports += [Import('Python')]
         imports += [Import('numpy/arrayobject')]
-        imports  = '\n'.join(self._print(i) for i in imports)
+        imports  = ''.join(self._print(i) for i in imports)
 
         numpy_max_acceptable_version = [1, 19]
         numpy_current_version = [int(v) for v in np.version.version.split('.')[:2]]
-        numpy_api_macro = '#define NPY_NO_DEPRECATED_API NPY_{}_{}_API_VERSION'.format(
+        numpy_api_macro = '#define NPY_NO_DEPRECATED_API NPY_{}_{}_API_VERSION\n'.format(
                 min(numpy_max_acceptable_version[0], numpy_current_version[0]),
                 min(numpy_max_acceptable_version[1], numpy_current_version[1]))
 
         return ('#define PY_SSIZE_T_CLEAN\n'
-                '{numpy_api_macro}\n'
-                '{imports}\n\n'
-                '{function_signatures}\n\n'
-                '{sep}\n\n'
-                '{cast_functions}\n\n'
-                '{sep}\n\n'
-                '{function_defs}\n\n'
-                '{method_def}\n\n'
-                '{sep}\n\n'
-                '{module_def}\n\n'
-                '{sep}\n\n'
-                '{init_func}\n'.format(
+                '{numpy_api_macro}'
+                '{imports}\n'
+                '{function_signatures}\n'
+                '{sep}\n'
+                '{cast_functions}\n'
+                '{sep}\n'
+                '{function_defs}\n'
+                '{method_def}\n'
+                '{sep}\n'
+                '{module_def}\n'
+                '{sep}\n'
+                '{init_func}'.format(
                     numpy_api_macro = numpy_api_macro,
                     imports = imports,
                     function_signatures = function_signatures,

@@ -3,9 +3,9 @@ import numpy as np
 
 from pyccel.decorators import types, stack_array, allow_negative_index
 
-a_1d   = np.array([1 << i for i in range(21)], dtype=np.int)
-a_2d_f = np.array([[1 << j for j in range(21)] for i in range(21)], dtype=np.int, order='F')
-a_2d_c = np.array([[1 << j for j in range(21)] for i in range(21)], dtype=np.int)
+a_1d   = np.array([1 << i for i in range(21)], dtype=int)
+a_2d_f = np.array([[1 << j for j in range(21)] for i in range(21)], dtype=int, order='F')
+a_2d_c = np.array([[1 << j for j in range(21)] for i in range(21)], dtype=int)
 
 #==============================================================================
 # 1D ARRAYS OF INT-32
@@ -1743,7 +1743,7 @@ def arr_arange_3():
 
 def arr_arange_4():
     import numpy as np
-    a = np.arange(1, 28, 3, dtype=np.float)
+    a = np.arange(1, 28, 3, dtype=float)
     return np.shape(a)[0], a[0], a[-1]
 
 def arr_arange_5():

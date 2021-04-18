@@ -1,25 +1,9 @@
 # pylint: disable=missing-function-docstring, missing-module-docstring/
 import pytest
-import numpy as np
 
-from pyccel.epyccel import epyccel
 from modules import base
+from utilities import epyccel_test
 
-
-class epyccel_test:
-    """
-    Class to pyccelize module then compare different results
-    This avoids the need to pyccelize the file multiple times
-    or write the arguments multiple times
-    """
-    def __init__(self, f, lang='fortran'):
-        self._f  = f
-        self._f2 = epyccel(f, language=lang)
-
-    def compare_epyccel(self, *args):
-        out1 = self._f(*args)
-        out2 = self._f2(*args)
-        assert np.equal(out1, out2 )
 
 def test_is_false(language):
     test = epyccel_test(base.is_false, lang=language)

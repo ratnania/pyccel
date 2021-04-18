@@ -27,7 +27,7 @@ from .literals       import LiteralInteger, LiteralString,  Nil, convert_to_lite
 from .itertoolsext   import Product
 from .functionalexpr import FunctionalFor
 
-from .operators import PyccelMul, Relational
+from .operators import PyccelAdd, PyccelMinus, PyccelMul, PyccelDiv, PyccelMod, Relational
 
 from .variable import DottedName, DottedVariable, IndexedElement
 from .variable import ValuedVariable, Variable
@@ -36,9 +36,7 @@ errors = Errors()
 
 # TODO [YG, 12.03.2020]: Move non-Python constructs to other modules
 # TODO [YG, 12.03.2020]: Rename classes to avoid name clashes in pyccel/ast
-# NOTE: commented-out symbols are never used in Pyccel
 __all__ = (
-    'AddOp',
     'AliasAssign',
     'Allocate',
     'AnnotatedComment',
@@ -55,10 +53,10 @@ __all__ = (
     'CommentBlock',
     'ConstructorCall',
     'Continue',
+    'Deallocate',
     'Declare',
     'Del',
-    'DivOp',
-    'Dlist',
+    'Duplicate',
     'DoConcurrent',
     'EmptyNode',
     'BindCFunctionDef',
@@ -69,11 +67,8 @@ __all__ = (
     'If',
     'Import',
     'Interface',
-    'ModOp',
     'Module',
     'ModuleHeader',
-    'MulOp',
-    'NativeOp',
     'ParserResult',
     'Pass',
     'Program',
@@ -81,7 +76,6 @@ __all__ = (
     'Return',
     'SeparatorComment',
     'StarredArguments',
-    'SubOp',
     'SymbolicAssign',
     'SymbolicPrint',
     'SympyFunction',
@@ -93,8 +87,6 @@ __all__ = (
     'get_initial_value',
     'get_iterable_ranges',
     'inline',
-#    'operator',
-#    'op_registry',
     'process_shape',
     'subs'
 )
@@ -293,9 +285,9 @@ class AsName(Basic):
         return hash(self.target)
 
 
-class Dlist(PyccelAstNode):
+class Duplicate(PyccelAstNode):
 
-    """ this is equivalent to the zeros function of numpy arrays for the python list.
+    """ this is equivalent to the * operator for python tuples.
 
     Parameters
     ----------
@@ -311,7 +303,7 @@ class Dlist(PyccelAstNode):
         self._dtype     = val.dtype
         self._precision = val.precision
         self._rank      = val.rank
-        self._shape     = tuple(s if i!= 0 else PyccelMul(s, length) for i,s in enumerate(val.shape))
+        self._shape     = tuple(s if i!= 0 else PyccelMul(s, length, simplify=True) for i,s in enumerate(val.shape))
         self._order     = val.order
 
         self._val       = val
@@ -325,6 +317,39 @@ class Dlist(PyccelAstNode):
     @property
     def length(self):
         return self._length
+
+    def __str__(self):
+        return '{} * {}'.format(str(self.val), str(self.length))
+
+    def __repr__(self):
+        return '{} * {}'.format(repr(self.val), repr(self.length))
+
+class Concatenate(PyccelAstNode):
+
+    """ this is equivalent to the + operator for python tuples
+
+    Parameters
+    ----------
+    args : PyccelAstNodes
+           The tuples
+    """
+    __slots__ = ('_args','_dtype','_precision','_rank','_shape','_order')
+    _attribute_nodes = ('_args',)
+
+    def __init__(self, arg1, arg2):
+        self._dtype     = arg1.dtype
+        self._precision = arg1.precision
+        self._rank      = arg1.rank
+        shape_addition  = arg2.shape[0]
+        self._shape     = tuple(s if i!= 0 else PyccelAdd(s, shape_addition) for i,s in enumerate(arg1.shape))
+        self._order     = arg1.order
+
+        self._args = (arg1, arg2)
+        super().__init__()
+
+    @property
+    def args(self):
+        return self._args
 
 
 class Assign(Basic):
@@ -393,6 +418,9 @@ class Assign(Basic):
 
     def __str__(self):
         return '{0} := {1}'.format(str(self.lhs), str(self.rhs))
+
+    def __repr__(self):
+        return '({0} := {1})'.format(repr(self.lhs), repr(self.rhs))
 
     @property
     def lhs(self):
@@ -766,60 +794,6 @@ class SymbolicAssign(Basic):
         return self._rhs
 
 
-# The following were defined to be sympy approved nodes. If there is something
-# smaller that could be used, that would be preferable. We only use them as
-# tokens.
-
-class NativeOp(metaclass=Singleton):
-
-    """Base type for native operands."""
-    __slots__ = ()
-
-    pass
-
-
-class AddOp(NativeOp):
-    __slots__ = ()
-    _symbol = '+'
-
-
-class SubOp(NativeOp):
-    __slots__ = ()
-    _symbol = '-'
-
-
-class MulOp(NativeOp):
-    __slots__ = ()
-    _symbol = '*'
-
-
-class DivOp(NativeOp):
-    __slots__ = ()
-    _symbol = '/'
-
-
-class ModOp(NativeOp):
-    __slots__ = ()
-    _symbol = '%'
-
-
-op_registry = {
-    '+': AddOp(),
-    '-': SubOp(),
-    '*': MulOp(),
-    '/': DivOp(),
-    '%': ModOp(),
-    }
-
-
-def operator(op):
-    """Returns the operator singleton for the given operator"""
-
-    if op.lower() not in op_registry:
-        raise ValueError('Unrecognized operator ' + op)
-    return op_registry[op]
-
-
 class AugAssign(Assign):
     r"""
     Represents augmented variable assignment for code generation.
@@ -861,6 +835,12 @@ class AugAssign(Assign):
     s += 1 + 2*t
     """
     __slots__ = ('_op',)
+    _accepted_operators = {
+            '+' : PyccelAdd,
+            '-' : PyccelMinus,
+            '*' : PyccelMul,
+            '/' : PyccelDiv,
+            '%' : PyccelMod}
 
     def __init__(
         self,
@@ -871,9 +851,7 @@ class AugAssign(Assign):
         like=None,
         ):
 
-        if isinstance(op, str):
-            op = operator(op)
-        elif op not in list(op_registry.values()):
+        if op not in self._accepted_operators.keys():
             raise TypeError('Unrecognized Operator')
 
         self._op = op
@@ -881,12 +859,24 @@ class AugAssign(Assign):
         super().__init__(lhs, rhs, status, like)
 
     def __str__(self):
-        return '{0} {1}= {2}'.format(str(self.lhs), self.op._symbol,
-                str(self.rhs))
+        return '{0} {1}= {2}'.format(str(self.lhs), self.op, str(self.rhs))
 
     @property
     def op(self):
         return self._op
+
+    def to_basic_assign(self):
+        """
+        Convert the AugAssign to an Assign
+        E.g. convert:
+        a += b
+        to:
+        a = a + b
+        """
+        return Assign(self.lhs,
+                self._accepted_operators[self._op](self.lhs, self.rhs),
+                status = self.status,
+                like   = self.like)
 
 
 class While(Basic):

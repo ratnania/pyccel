@@ -17,12 +17,12 @@ runs:
       shell: bash
     - name: Install MPI
       run: |
-        sudo apt-get install libomp5 libopenmpi-dev openmpi-bin
+        sudo apt-get install libopenmpi-dev openmpi-bin
         echo "MPI_OPTS=--oversubscribe" >> $GITHUB_ENV
       shell: bash
     - name: Install OpenMP
       run:
-        sudo apt-get install libomp-dev
+        sudo apt-get install libomp-dev libomp5
       shell: bash
     - name: Install Valgrind
       run:

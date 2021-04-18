@@ -465,7 +465,7 @@ class LuaCodePrinter(CodePrinter):
 
     def _print_AugAssign(self, expr):
         lhs_code = self._print(expr.lhs)
-        op = expr.op._symbol
+        op = expr.op
         rhs_code = self._print(expr.rhs)
         return "{0} {1}= {2}".format(lhs_code, op, rhs_code)
 

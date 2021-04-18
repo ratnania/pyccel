@@ -49,6 +49,9 @@ class Literal(PyccelAstNode):
     def python_value(self):
         """ Get python literal represented by this instance """
 
+    def __repr__(self):
+        return "Literal({})".format(repr(self.python_value))
+
     def __str__(self):
         return str(self.python_value)
 
@@ -95,6 +98,7 @@ class LiteralInteger(Literal):
 
     def __init__(self, value, precision = default_precision['integer']):
         super().__init__(precision)
+        assert(value >= 0)
         if not isinstance(value, int):
             raise TypeError("A LiteralInteger can only be created with an integer")
         self._value = value
@@ -274,6 +278,8 @@ def convert_to_literal(value, dtype = None, precision = None):
                   The python value 'value' expressed as a literal
                   with the specified dtype and precision
     """
+    from .operators import PyccelUnarySub # Imported here to avoid circular import
+
     if dtype is None:
         if isinstance(value, int):
             dtype = NativeInteger()
@@ -292,7 +298,10 @@ def convert_to_literal(value, dtype = None, precision = None):
         precision = default_precision[str(dtype)]
 
     if isinstance(dtype, NativeInteger):
-        literal_val = LiteralInteger(value, precision)
+        if value >= 0:
+            literal_val = LiteralInteger(value, precision)
+        else:
+            literal_val = PyccelUnarySub(LiteralInteger(-value, precision))
     elif isinstance(dtype, NativeReal):
         literal_val = LiteralFloat(value, precision=precision)
     elif isinstance(dtype, NativeComplex):

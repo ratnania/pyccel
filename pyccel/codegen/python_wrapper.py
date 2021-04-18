@@ -130,6 +130,8 @@ def create_shared_library(codegen,
 
         setup_filename = os.path.join(pyccel_dirpath, setup_filename)
         cmd = [sys.executable, setup_filename, "build"]
+        if sys.platform == 'win32' and compiler in ('gfortran','gcc','ifort','icc'):
+            cmd += ['--compiler=mingw32']
 
         if verbose:
             print(' '.join(cmd))
@@ -146,8 +148,7 @@ def create_shared_library(codegen,
             print(out)
         if p.returncode != 0:
             err_msg = "Failed to build module"
-            if verbose:
-                err_msg += "\n" + err
+            err_msg += "\n" + err
             raise RuntimeError(err_msg)
         if err:
             warnings.warn(UserWarning(err))

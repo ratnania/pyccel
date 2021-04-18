@@ -361,6 +361,7 @@ def test_funcs(language):
     pyccel_test("scripts/runtest_funcs.py", language = language)
 
 #------------------------------------------------------------------------------
+# Enumerate not supported in c
 def test_inout_func():
     pyccel_test("scripts/runtest_inoutfunc.py")
 
@@ -412,9 +413,8 @@ def test_pyccel_calling_directory(language):
     compare_pyth_fort_output( pyth_out, fort_out )
 
 #------------------------------------------------------------------------------
-# C does not handle stack arrays of variable size. See #760
-def test_in_specified():
-    pyccel_test("scripts/runtest_degree_in.py")
+def test_in_specified(language):
+    pyccel_test("scripts/runtest_degree_in.py", language=language)
 
 #------------------------------------------------------------------------------
 @pytest.mark.parametrize( "test_file", ["scripts/hope_benchmarks/hope_fib.py",
@@ -440,8 +440,7 @@ def test_hope_benchmarks( test_file ):
 #------------------------------------------------------------------------------
 @pytest.mark.c
 @pytest.mark.parametrize( "test_file", ["scripts/hope_benchmarks/hope_fib.py",
-                                        pytest.param("scripts/hope_benchmarks/quicksort.py",
-                                            marks = pytest.mark.skip(reason="len not implemented in c")),
+                                        "scripts/hope_benchmarks/quicksort.py",
                                         "scripts/hope_benchmarks/hope_pisum.py",
                                         "scripts/hope_benchmarks/hope_ln_python.py",
                                         "scripts/hope_benchmarks/hope_pairwise_python.py",
@@ -454,8 +453,7 @@ def test_hope_benchmarks( test_file ):
                                         pytest.param("scripts/hope_benchmarks_decorators/point_spread_func.py",
                                             marks = pytest.mark.skip(reason="Numpy sum not implemented in c")),
                                         "scripts/hope_benchmarks_decorators/simplify.py",
-                                        pytest.param("scripts/hope_benchmarks_decorators/quicksort.py",
-                                            marks = pytest.mark.skip(reason="len not implemented in c")),
+                                        "scripts/hope_benchmarks_decorators/quicksort.py",
                                         ] )
 def test_hope_benchmarks_c( test_file ):
     pyccel_test(test_file, language='c')
@@ -505,6 +503,7 @@ def test_import_collisions():
             dependencies = ["scripts/import_syntax/user_mod.py", "scripts/import_syntax/user_mod2.py"])
 
 #------------------------------------------------------------------------------
+# Numpy sum required
 def test_numpy_kernels_compile():
     cwd = get_abs_path(".")
     compile_pyccel(os.path.join(cwd, "scripts/numpy/"), "numpy_kernels.py")
@@ -518,9 +517,8 @@ def test_multiple_results(language):
                 ,float,float,float,float], language=language)
 
 #------------------------------------------------------------------------------
-# Print array not implemented in c
-def test_elemental():
-    pyccel_test("scripts/decorators_elemental.py")
+def test_elemental(language):
+    pyccel_test("scripts/decorators_elemental.py", language = language)
 
 #------------------------------------------------------------------------------
 def test_print_strings(language):
