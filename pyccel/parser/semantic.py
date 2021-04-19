@@ -1950,7 +1950,6 @@ class SemanticParser(BasicParser):
             return CodeBlock(stmts)
 
         elif isinstance(rhs, FunctionCall):
-            print(rhs.funcdef)
             func = rhs.funcdef
             if isinstance(func, FunctionDef):
                 results = func.results

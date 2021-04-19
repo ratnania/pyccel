@@ -154,7 +154,7 @@ class CuCodePrinter(CCodePrinter):
         for i, ind in enumerate(inds):
             indices.append('{}.strides[{}] * {}'.format(base_name, i, ind))
         return "%s.%s[%s]" % (base_name, dtype, "+ ".join(indices))
-    
+
     def function_signature(self, expr):
         # print(expr)
         args = list(expr.arguments)
@@ -172,7 +172,7 @@ class CuCodePrinter(CCodePrinter):
             arg_code = ', '.join('{}'.format(self.function_signature(i))
                         if isinstance(i, FunctionAddress) else '{0}{1}'.format(self.get_declare_type(i), i)
                         for i in args)
-        
+
         decorator = '__global__' if 'cuda' or 'cuda.jit' in expr.decorators else ''
 
         if isinstance(expr, FunctionAddress):
@@ -231,7 +231,6 @@ class CuCodePrinter(CCodePrinter):
             # flattening the args to use them in C initialization.
             arg = functools.reduce(operator.concat, arg)
 
-        print(arg.is_ondevice)
         if isinstance(arg, Variable):
             arg = self._print(arg)
             if expr.lhs.is_stack_array:

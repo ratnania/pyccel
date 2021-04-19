@@ -109,7 +109,6 @@ def NumbaCopyToHost(arg):
     """
     _attribute_nodes = ('_arg',)
 
-    print(arg)
     if not isinstance(arg, Variable):
         raise TypeError('Unknown type of  %s.' % type(arg))
 
