@@ -195,6 +195,7 @@ class CuCodePrinter(CCodePrinter):
         # if isinstance(expr.rhs, (CudaMalloc)):
         #     return self.CudaMalloc(expr.lhs, expr.rhs)
         ######
+       ## print(expr, expr.lhs, expr.rhs, type(expr.rhs))
         if isinstance(expr.rhs, (NumpyArray)):
             return self.copy_NumpyArray_Data(expr)
         if isinstance(expr.rhs, (NumpyFull)):
@@ -229,7 +230,7 @@ class CuCodePrinter(CCodePrinter):
         arg = rhs.arg
         if rhs.rank > 1:
             # flattening the args to use them in C initialization.
-            arg = functools.reduce(operator.concat, arg)
+            arg = self._flatten_list(arg)
 
         if isinstance(arg, Variable):
             arg = self._print(arg)
@@ -271,24 +272,17 @@ class CuCodePrinter(CCodePrinter):
         declare_dtype = self.find_in_dtype_registry(self._print(rhs.dtype), rhs.precision)
         dtype = self.find_in_ndarray_type_registry(self._print(rhs.dtype), rhs.precision)
         arg = rhs.arg
-
+        if rhs.rank > 1:
+            #flattening the args to use them in C initialization.
+            arg = self._flatten_list(arg)
         if isinstance(arg, Variable):
             arg = self._print(arg)
-            if expr.lhs.is_stack_array:
-                cpy_data = self._init_stack_array(expr, rhs.arg)
-            else:
-                cpy_data = "cudaMemcpy({0}.{2}, {1}.{2}, {0}.buffer_size, cudaMemcpyHostToDevice);".format(lhs, arg, dtype)
+            cpy_data = "cudaMemcpy({0}.{2}, {1}.{2}, {0}.buffer_size, cudaMemcpyHostToDevice);".format(lhs, arg, dtype)
             return '%s\n' % (cpy_data)
         else :
-            if rhs.rank > 1 and isinstance(arg, Variable):
-                #flattening the args to use them in C initialization.
-                arg = functools.reduce(operator.concat, arg)
             arg = ', '.join(self._print(i) for i in arg)
             dummy_array = "%s %s[] = {%s};\n" % (declare_dtype, dummy_array_name, arg)
-            if expr.lhs.is_stack_array:
-                cpy_data = self._init_stack_array(expr, dummy_array_name)
-            else:
-                cpy_data = "cudaMemcpy({0}.{2}, {1}, {0}.buffer_size, cudaMemcpyHostToDevice);".format(self._print(lhs), dummy_array_name, dtype)
+            cpy_data = "cudaMemcpy({0}.{2}, {1}, {0}.buffer_size, cudaMemcpyHostToDevice);".format(self._print(lhs), dummy_array_name, dtype)
             return  '%s%s\n' % (dummy_array, cpy_data)
 
     def _print_Allocate(self, expr):

@@ -113,7 +113,7 @@ def NumbaCopyToHost(arg):
         raise TypeError('Unknown type of  %s.' % type(arg))
 
     if isinstance(arg, Variable) and not arg.is_ndarray and not arg.is_stack_array and not arg.is_ondevice:
-            raise TypeError('we only accept device ndarrays')
+        raise TypeError('we only accept device ndarrays')
     return NumpyArray(arg)
 
 def Shape(arg):
@@ -138,10 +138,10 @@ NumbaArrayClass = ClassDef('numba.cuda.cudadrv.devicearray.DeviceNDArray',
 
 numba_functions = {
     'to_device'         : NumbaToDevice,
+    'copy_to_host'      : NumbaCopyToHost,
+    'shape'             : Shape,
     'threadIdx'         : CudaThreadIdx,
     'blockDim'          : CudaBlockDim,
     'blockIdx'          : CudaBlockIdx,
-    'shape'             : Shape,
-    'copy_to_host'      : NumbaCopyToHost,
     'gridDim'           : CudaGridDim
 }

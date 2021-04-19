@@ -1663,6 +1663,10 @@ class KernelCall(PyccelAstNode):
         super().__init__()
 
     @property
+    def kernel_name(self):
+        return self._func_name
+
+    @property
     def dims(self):
         return self._dims
 
@@ -2293,100 +2297,6 @@ class FunctionDef(Basic):
     @property
     def is_unused(self):
         return False
-
-class CKernelDef(Basic):
-
-    """Represents a function definition.
-
-    Parameters
-    ----------
-    name : str
-        The name of the function.
-
-    Cbody : str
-        The body of the function.
-    """
-    __slots__ = ('_Cbody','_name')
-    _attribute_nodes = ('_Cbody',)
-
-    def __init__(
-        self,
-        Cbody,
-        name):
-
-        # print(type(name), Cbody)
-        if isinstance(name, (str, LiteralString)):
-            name = PyccelSymbol(name)
-        elif isinstance(name, (tuple, list)):
-            name_ = []
-            for i in name:
-                if isinstance(i, str):
-                    name_.append(PyccelSymbol(i))
-                else:
-                    raise TypeError('Function name must be PyccelSymbol or string'
-                                    )
-            name = tuple(name_)
-        else:
-             raise TypeError('Function name must be PyccelSymbol or string')
-
-        # body
-
-        # if iterable(body):
-        #     body = CodeBlock(body)
-        # elif not isinstance(body,CodeBlock):
-        #     raise TypeError('body must be an iterable or a CodeBlock')
-
-        self._name            = name
-        self._Cbody           = Cbody
-        super().__init__()
-
-    @property
-    def name(self):
-        """ Name of the function """
-        return self._name
-
-    @property
-    def Cbody(self):
-        """ CodeBlock containing all the statements in the function """
-        return self._Cbody
-
-    # @property
-    # def cls_name(self):
-    #     """ String containing the name of the class to which the method belongs.
-    #     If the function is not a class procedure then this returns None """
-    #     return self._cls_name
-
-    # @property
-    # def is_private(self):
-    #     """ True if the function should not be exposed to
-    #     other modules. This includes the wrapper module and
-    #     means that the function cannot be used in an import
-    #     or exposed to python """
-    #     return self._is_private
-
-    # @property
-    # def arguments_inout(self):
-    #     """ List of variables which are the modifiable function arguments """
-    #     return self._arguments_inout
-
-    # @property
-    # def functions(self):
-    #     """ List of functions within this function """
-    #     return self._functions
-
-    # @property
-    # def interfaces(self):
-    #     """ List of interfaces within this function """
-    #     return self._interfaces
-
-    # def __str__(self):
-    #     result = 'None' if len(self.results) == 0 else \
-    #                 ', '.join(str(r) for r in self.results)
-    #     args = ', '.join(str(a) for a in self.arguments)
-    #     return '{name}({args}) -> {result}'.format(
-    #             name   = self.name,
-    #             args   = args,
-    #             result = result)
 
 class Interface(Basic):
 

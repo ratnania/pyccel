@@ -31,7 +31,7 @@ from pyccel.ast.core import AugAssign, CodeBlock
 from pyccel.ast.core import Return, Argument
 from pyccel.ast.core import ConstructorCall
 from pyccel.ast.core import ValuedFunctionAddress
-from pyccel.ast.core import FunctionDef, Interface, FunctionAddress, FunctionCall, KernelCall, CKernelDef
+from pyccel.ast.core import FunctionDef, Interface, FunctionAddress, FunctionCall, KernelCall
 from pyccel.ast.core import DottedFunctionCall
 from pyccel.ast.core import ClassDef
 from pyccel.ast.core import For, FunctionalFor, ForIterator
@@ -95,8 +95,6 @@ from pyccel.ast.cudext import CudaThreadIdx, CudaBlockDim, CudaBlockIdx, CudaGri
 from pyccel.ast.numbaext import NumbaNewArray, NumbaArrayClass
 
 from pyccel.ast.cupyext import CupyNewArray
-from pyccel.ast.cupyext import CupyRawKernel
-
 
 from pyccel.ast.internals import Slice, PyccelSymbol
 
@@ -1382,7 +1380,9 @@ class SemanticParser(BasicParser):
         useful_body  = [l for l in visited_body if isinstance(l, expr_types)]
 
         if len(visited_body) != len(useful_body):
+
             removed = [v for v in visited_body if v not in useful_body]
+            print(useful_body)
             for r in removed:
                 errors.report("Expression with no effect has been removed",
                         symbol=r, severity='warning')
@@ -1624,12 +1624,12 @@ class SemanticParser(BasicParser):
                         self.insert_import('numpy', rhs_name)
                         func = i.decorators['numpy_wrapper']
                         return func(visited_lhs, *args)
-                elif 'numba_wrapper' in i.decorators.keys():
-                    self.insert_import('numba', rhs_name)
-                    func = i.decorators['numba_wrapper']
-                    return func(visited_lhs, *args)
-                else:
-                    return DottedFunctionCall(i, args, prefix = visited_lhs,
+                    elif 'numba_wrapper' in i.decorators.keys():
+                        self.insert_import('numba', rhs_name)
+                        func = i.decorators['numba_wrapper']
+                        return func(visited_lhs, *args)
+                    else:
+                        return DottedFunctionCall(i, args, prefix = visited_lhs,
                                 current_function = self._current_function)
 
         # look for a class attribute / property
@@ -1658,6 +1658,11 @@ class SemanticParser(BasicParser):
                             func = i.decorators['numpy_wrapper']
                             self.insert_import('numpy', rhs)
                             return func(visited_lhs)
+                        elif 'numba_wrapper' in i.decorators.keys():
+                            func = i.decorators['numba_wrapper']
+                            self.insert_import('numba', rhs)
+                            return func(visited_lhs)
+
                         else:
                             return DottedFunctionCall(i, [], prefix = visited_lhs,
                                     current_function = self._current_function)
@@ -1746,9 +1751,8 @@ class SemanticParser(BasicParser):
         return expr
 
     def _visit_KernelCall(self, expr, **settings):
-        # print(expr.func, type(expr.func))
         func = self._visit(expr.func, **settings)
-        return KernelCall(func, expr.dims)
+        return CodeBlock([KernelCall(func, expr.dims),])
 
     def _visit_FunctionCall(self, expr, **settings):
         name     = expr.funcdef
@@ -2007,13 +2011,6 @@ class SemanticParser(BasicParser):
                 d_var_i['rank' ]  = dvar['rank']
 
         else:
-            # print('>>', rhs)
-            if isinstance(rhs, CupyRawKernel):
-                # print(rhs.name, rhs.code)
-                func = CKernelDef(rhs.code,rhs.name)
-                self.insert_function(func)
-                # return CodeBlock([func])
-            # print(self.code)
             d_var  = self._infere_type(rhs, **settings)
             d_list = d_var if isinstance(d_var, list) else [d_var]
 

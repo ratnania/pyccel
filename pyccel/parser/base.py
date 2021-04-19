@@ -19,7 +19,7 @@ from pyccel.version import __version__
 from pyccel.ast.builtins import Lambda
 
 from pyccel.ast.core import SymbolicAssign
-from pyccel.ast.core import FunctionDef, Interface, FunctionAddress, CKernelDef
+from pyccel.ast.core import FunctionDef, Interface, FunctionAddress
 from pyccel.ast.core import PythonFunction, SympyFunction
 from pyccel.ast.core import Import, AsName
 from pyccel.ast.core import create_incremented_string, create_variable
@@ -470,7 +470,7 @@ class BasicParser(object):
             self.insert_symbolic_function(func)
         elif isinstance(func, PythonFunction):
             self.insert_python_function(func)
-        elif isinstance(func, (FunctionDef, Interface, FunctionAddress, CKernelDef)):
+        elif isinstance(func, (FunctionDef, Interface, FunctionAddress)):
             container = self.namespace.functions
             container[func.name] = func
         else:
