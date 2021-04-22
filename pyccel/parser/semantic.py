@@ -796,7 +796,9 @@ class SemanticParser(BasicParser):
 
         elif isinstance(expr, StructuredTypeConstructor):
             dtype = DataTypeFactory(expr.name, '_name')
+            cls = self.get_class(expr.name)
 
+            d_var['cls_base'   ] = cls
             d_var['datatype'   ] = dtype
             d_var['allocatable'] = False
             d_var['is_pointer' ] = False
@@ -1538,6 +1540,7 @@ class SemanticParser(BasicParser):
                 bounding_box=(self._current_fst_node.lineno, self._current_fst_node.col_offset),
                 severity='fatal', blocker=True)
 
+
         if first.cls_base:
             attr_name = [i.name for i in first.cls_base.attributes]
 
@@ -1575,6 +1578,7 @@ class SemanticParser(BasicParser):
 
         # look for a class attribute / property
         elif isinstance(rhs, PyccelSymbol) and first.cls_base:
+
             methods = list(first.cls_base.methods) + list(first.cls_base.interfaces)
             for method in methods:
                 if isinstance(method, Interface):
