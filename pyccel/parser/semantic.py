@@ -2870,7 +2870,11 @@ class SemanticParser(BasicParser):
             return PythonPrint(args)
 
     def _visit_StructuredTypeConstructor(self, expr, **settings):
-        # TODO check types
+        cls = self.get_class(expr.name)
+        # TODO ARA add error msg
+        for att, arg in zip(cls.attributes, expr.arguments):
+            assert(att.dtype is arg.dtype)
+
         return expr
 
     def _visit_StructuredTypeDef(self, expr, **settings):
