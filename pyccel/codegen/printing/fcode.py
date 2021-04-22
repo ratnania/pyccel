@@ -1304,7 +1304,20 @@ class FCodePrinter(CodePrinter):
                 return self._get_statement(code)
 
         if isinstance(rhs, StructuredTypeConstructor):
-            return ''
+            att_names = [i.name for i in expr.lhs.cls_base.attributes]
+            arguments = rhs.arguments
+            stmts = []
+            for att, arg in zip(att_names, arguments):
+                dname = DottedName(lhs_code, att)
+                stmt = Assign(Variable(arg.dtype, dname), arg)
+
+                stmts.append(stmt)
+
+            # TODO we should encapsulate the statements between two comments,
+            #      explaining what are we doing here
+            code = ''.join(self._print_Assign(i) for i in stmts)
+
+            return code
 
         if (isinstance(expr.lhs, Variable) and
               expr.lhs.dtype == NativeSymbol()):
