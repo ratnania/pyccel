@@ -82,6 +82,8 @@ builtin_import_registery = {'numpy': {
                             'scipy.constants': scipy_constants,
                             'itertools': {'product': Product},
                             'math': {**math_functions, ** math_constants},
+                            # [ARA] #843 ignore dataclasses at the import
+                            'dataclasses': {},
                             'pyccel.decorators': None}
 
 #==============================================================================
