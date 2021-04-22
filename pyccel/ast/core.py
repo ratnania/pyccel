@@ -2458,18 +2458,27 @@ class StructuredTypeDef(Basic):
 
     Parameters
     ----------
-    TODO
+    name : str
+        The name of the class.
+
+    attributes: iterable
+        The attributes to the class.
+
+    methods: iterable
+        Class methods
 
     Examples
     --------
     TODO
     """
-    __slots__ = ('_name','_attributes')
-    _attribute_nodes = ('_name','_attributes')
+    __slots__ = ('_name','_attributes','_methods','_interfaces')
+    _attribute_nodes = ('_name','_attributes','_methods','_interfaces')
 
-    def __init__(self, name, attributes=()):
+    def __init__(self, name, attributes=(), methods=(), interfaces=()):
         self._name = name
         self._attributes = attributes
+        self._methods = methods
+        self._interfaces = interfaces
 
         super().__init__()
 
@@ -2486,6 +2495,14 @@ class StructuredTypeDef(Basic):
     @property
     def attributes(self):
         return self._attributes
+
+    @property
+    def methods(self):
+        return self._methods
+
+    @property
+    def interfaces(self):
+        return self._interfaces
 
 class DeclareType(Basic):
 
