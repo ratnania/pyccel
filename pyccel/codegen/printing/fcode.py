@@ -1720,7 +1720,7 @@ class FCodePrinter(CodePrinter):
         for i in expr.attributes:
             dec = Declare(i.dtype, i)
             decs.append(dec)
-        decs = '\n'.join(self._print(dec) for dec in decs)
+        decs = ''.join(self._print(dec) for dec in decs)
         # ...
 
         code = 'type {name}\n{decs}end type'.format( name=expr.name,
