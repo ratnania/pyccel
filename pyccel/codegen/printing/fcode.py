@@ -33,9 +33,11 @@ from pyccel.ast.core import (Assign, AliasAssign, Declare,
 from pyccel.ast.core import StructuredTypeConstructor
 from pyccel.ast.core import DeclareType
 
+from pyccel.ast.core import ValuedVariable
 from pyccel.ast.variable  import (Variable, TupleVariable,
                              IndexedElement,
                              DottedName, PyccelArraySize)
+from pyccel.ast.variable import ValuedVariable
 
 from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus, PyccelNot
 
@@ -1718,8 +1720,13 @@ class FCodePrinter(CodePrinter):
         # ... declarations
         decs = []
         for i in expr.attributes:
-            dec = Declare(i.dtype, i)
+            value = None
+            if isinstance(i, ValuedVariable):
+                value = i.value
+
+            dec = Declare(i.dtype, i, value=value)
             decs.append(dec)
+
         decs = ''.join(self._print(dec) for dec in decs)
         # ...
 
