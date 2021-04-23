@@ -64,6 +64,7 @@ from pyccel.ast.literals import LiteralFalse, LiteralTrue, LiteralString
 from pyccel.ast.literals import Nil
 from pyccel.ast.functionalexpr import FunctionalSum, FunctionalMax, FunctionalMin
 from pyccel.ast.variable  import DottedName
+from pyccel.ast.variable import ValuedVariable
 
 from pyccel.ast.internals import Slice, PyccelSymbol, PyccelInternalFunction
 
@@ -838,10 +839,6 @@ class SyntaxParser(BasicParser):
         return func
 
     def _visit_AnnAssign(self, stmt):
-        value = None
-        if not( stmt.value is None ):
-            raise NotImplementedError('AnnAssign with value not yet available')
-
         simple = None
         if not( stmt.simple == 1 ):
             raise NotImplementedError('AnnAssign with simple != 1 not yet available')
@@ -849,8 +846,16 @@ class SyntaxParser(BasicParser):
         target = self._visit(stmt.target)
         annotation = self._visit(stmt.annotation)
 
-        if ( value is None ) and ( simple is None ):
-            return Variable(str(annotation), str(target))
+        value = None
+        if not( stmt.value is None ):
+            value = self._visit(stmt.value)
+
+        if simple is None:
+            if value is None:
+                return Variable(str(annotation), str(target))
+
+            else:
+                return ValuedVariable(str(annotation), str(target), value=value)
 
         else:
             raise NotImplementedError('value is expected to be None, and simple=1')
