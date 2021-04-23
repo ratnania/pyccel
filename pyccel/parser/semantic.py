@@ -2875,13 +2875,19 @@ class SemanticParser(BasicParser):
 
     def _visit_StructuredTypeConstructor(self, expr, **settings):
         cls = self.get_class(expr.name)
-        # TODO ARA add error msg
         for att, arg in zip(cls.attributes, expr.arguments):
+            # TODO ARA add error msg
             assert(att.dtype is arg.dtype)
 
         return expr
 
     def _visit_StructuredTypeDef(self, expr, **settings):
+        # we check that valued variables are semanticly correct
+        valued = [i for i in expr.attributes if isinstance(i, ValuedVariable)]
+        for i in valued:
+            # TODO ARA add error msg
+            assert(i.dtype is i.value.dtype)
+
         return expr
 
     def _visit_ClassDef(self, expr, **settings):
