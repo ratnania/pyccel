@@ -2875,9 +2875,26 @@ class SemanticParser(BasicParser):
 
     def _visit_StructuredTypeConstructor(self, expr, **settings):
         cls = self.get_class(expr.name)
-        for att, arg in zip(cls.attributes, expr.arguments):
-            # TODO ARA add error msg
+
+        args   = []
+        kwargs = OrderedDict()
+        for i in expr.arguments:
+            if isinstance(i, ValuedArgument):
+                kwargs[i.name] = i
+            else:
+                args.append(i)
+
+        attributes = cls.attributes[:len(args)]
+        for att, arg in zip(attributes, args):
             assert(att.dtype is arg.dtype)
+            # TODO ARA add error msg
+
+        attributes = cls.attributes[len(args):]
+        for att in attributes:
+            arg = kwargs[att.name]
+            value = arg.value
+            assert(att.dtype is value.dtype)
+            # TODO ARA add error msg
 
         return expr
 

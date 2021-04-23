@@ -32,6 +32,7 @@ from pyccel.ast.core import (Assign, AliasAssign, Declare,
                              If, IfSection)
 from pyccel.ast.core import StructuredTypeConstructor
 from pyccel.ast.core import DeclareType
+from pyccel.ast.core import ValuedArgument
 
 from pyccel.ast.core import ValuedVariable
 from pyccel.ast.variable  import (Variable, TupleVariable,
@@ -1311,7 +1312,16 @@ class FCodePrinter(CodePrinter):
             stmts = []
             for att, arg in zip(att_names, arguments):
                 dname = DottedName(lhs_code, att)
-                stmt = Assign(Variable(arg.dtype, dname), arg)
+                # TODO [ARA] #843 we should not have a ValuedArgument here
+                if isinstance(arg, ValuedArgument):
+                    dtype = arg.value.dtype
+                    rhs = arg.value
+
+                else:
+                    dtype = arg.dtype
+                    rhs = arg
+
+                stmt = Assign(Variable(dtype, dname), rhs)
 
                 stmts.append(stmt)
 
