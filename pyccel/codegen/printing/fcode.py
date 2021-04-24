@@ -32,7 +32,6 @@ from pyccel.ast.core import (Assign, AliasAssign, Declare,
                              If, IfSection)
 from pyccel.ast.core import StructuredTypeConstructor
 from pyccel.ast.core import DeclareType
-from pyccel.ast.core import ValuedArgument
 
 from pyccel.ast.core import ValuedVariable
 from pyccel.ast.variable  import (Variable, TupleVariable,
