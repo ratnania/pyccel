@@ -2878,21 +2878,25 @@ class SemanticParser(BasicParser):
         if len(expr.arguments) == 0:
             return expr
 
+        arguments = self._visit(expr.arguments, **settings)
         cls = self.get_class(expr.name)
 
         args   = []
         kwargs = OrderedDict()
-        arguments = []
-        for i in expr.arguments:
+        for i in arguments:
             if isinstance(i, ValuedArgument):
                 kwargs[i.name] = i
             else:
                 args.append(i)
 
+        arguments = []
         attributes = cls.attributes[:len(args)]
         for att, arg in zip(attributes, args):
             arguments.append(arg)
-            assert(att.dtype is arg.dtype)
+            # TODO ARA cruches when nested types
+#            assert(att.dtype is arg.dtype)
+            # example:   <class 'pyccel.ast.datatypes.PyccelPoint'> <class 'pyccel.ast.datatypes.PyccelPoint'>
+#            print(att.dtype, arg.dtype, att.dtype == arg.dtype)
             # TODO ARA add error msg
 
         attributes = cls.attributes[len(args):]
