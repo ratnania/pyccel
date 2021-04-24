@@ -23,6 +23,7 @@ from pyccel.ast.core import FunctionCall
 from pyccel.ast.core import ParserResult
 from pyccel.ast.core import Assign
 from pyccel.ast.core import AugAssign
+from pyccel.ast.core import AnnotatedAssign
 from pyccel.ast.core import Return
 from pyccel.ast.core import Pass
 from pyccel.ast.core import FunctionDef
@@ -850,15 +851,7 @@ class SyntaxParser(BasicParser):
         if not( stmt.value is None ):
             value = self._visit(stmt.value)
 
-        if simple is None:
-            if value is None:
-                return Variable(str(annotation), str(target))
-
-            else:
-                return ValuedVariable(str(annotation), str(target), value=value)
-
-        else:
-            raise NotImplementedError('value is expected to be None, and simple=1')
+        return AnnotatedAssign(target, annotation, value=value)
 
     def _visit_ClassDef(self, stmt):
         is_dataclass = False
@@ -876,7 +869,12 @@ class SyntaxParser(BasicParser):
                     new_s = self._visit(s)
                     stmts.append(new_s)
 
-                attributes = [i for i in stmts if isinstance(i, Variable)]
+                # [ARA] #843
+                # we define the StructuredType with AnnotatedAssign
+                # because in the case of nested Derived Types, we need to access
+                # to the newly defined type, which is known only at the semantic
+                # level
+                attributes = [i for i in stmts if isinstance(i, AnnotatedAssign)]
         # ...
 
         name = stmt.name
