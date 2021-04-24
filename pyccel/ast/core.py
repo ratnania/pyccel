@@ -39,6 +39,7 @@ errors = Errors()
 __all__ = (
     'AliasAssign',
     'Allocate',
+    'AnnotatedAssign',
     'AnnotatedComment',
     'Argument',
     'AsName',
@@ -2482,12 +2483,6 @@ class StructuredTypeDef(Basic):
 
         super().__init__()
 
-    def __str__(self):
-        raise NotImplementedError('TODO')
-
-    def __repr__(self):
-        raise NotImplementedError('TODO')
-
     @property
     def name(self):
         return self._name
@@ -2524,15 +2519,43 @@ class DeclareType(Basic):
 
         super().__init__()
 
-    def __str__(self):
-        raise NotImplementedError('TODO')
-
-    def __repr__(self):
-        raise NotImplementedError('TODO')
-
     @property
     def expr(self):
         return self._expr
+
+class AnnotatedAssign(Basic):
+
+    """Represents an annotated assign. used inside a classdef/dataclass
+
+    Parameters
+    ----------
+    TODO
+
+    Examples
+    --------
+    TODO
+    """
+    __slots__ = ('_target','_annotation','_value')
+    _attribute_nodes = ('_target','_annotation','_value')
+
+    def __init__(self, target, annotation, value=None):
+        self._target = target
+        self._annotation = annotation
+        self._value = value
+
+        super().__init__()
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def annotation(self):
+        return self._annotation
+
+    @property
+    def value(self):
+        return self._value
 
 class StructuredTypeConstructor(Basic):
 
@@ -2554,12 +2577,6 @@ class StructuredTypeConstructor(Basic):
         self._arguments = arguments
 
         super().__init__()
-
-    def __str__(self):
-        raise NotImplementedError('TODO')
-
-    def __repr__(self):
-        raise NotImplementedError('TODO')
 
     @property
     def name(self):
