@@ -2878,6 +2878,7 @@ class SemanticParser(BasicParser):
 
         args   = []
         kwargs = OrderedDict()
+        arguments = []
         for i in expr.arguments:
             if isinstance(i, ValuedArgument):
                 kwargs[i.name] = i
@@ -2886,6 +2887,7 @@ class SemanticParser(BasicParser):
 
         attributes = cls.attributes[:len(args)]
         for att, arg in zip(attributes, args):
+            arguments.append(arg)
             assert(att.dtype is arg.dtype)
             # TODO ARA add error msg
 
@@ -2893,10 +2895,11 @@ class SemanticParser(BasicParser):
         for att in attributes:
             arg = kwargs[att.name]
             value = arg.value
+            arguments.append(value)
             assert(att.dtype is value.dtype)
             # TODO ARA add error msg
 
-        return expr
+        return StructuredTypeConstructor(expr.name, arguments)
 
     def _visit_StructuredTypeDef(self, expr, **settings):
         # we check that valued variables are semanticly correct
