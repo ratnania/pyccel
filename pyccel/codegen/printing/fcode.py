@@ -1733,7 +1733,7 @@ class FCodePrinter(CodePrinter):
         decs = ''.join(self._print(dec) for dec in decs)
         # ...
 
-        code = 'type {name}\n{decs}end type'.format( name=expr.name,
+        code = 'type {name}\n{decs}end type\n'.format( name=expr.name,
                                                        decs=decs )
 
         return code
