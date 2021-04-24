@@ -2874,6 +2874,9 @@ class SemanticParser(BasicParser):
             return PythonPrint(args)
 
     def _visit_StructuredTypeConstructor(self, expr, **settings):
+        if len(expr.arguments) == 0:
+            return expr
+
         cls = self.get_class(expr.name)
 
         args   = []
