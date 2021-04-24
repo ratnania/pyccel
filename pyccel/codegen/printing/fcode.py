@@ -1312,14 +1312,8 @@ class FCodePrinter(CodePrinter):
             stmts = []
             for att, arg in zip(att_names, arguments):
                 dname = DottedName(lhs_code, att)
-                # TODO [ARA] #843 we should not have a ValuedArgument here
-                if isinstance(arg, ValuedArgument):
-                    dtype = arg.value.dtype
-                    rhs = arg.value
-
-                else:
-                    dtype = arg.dtype
-                    rhs = arg
+                dtype = arg.dtype
+                rhs = arg
 
                 stmt = Assign(Variable(dtype, dname), rhs)
 
