@@ -2910,7 +2910,14 @@ class SemanticParser(BasicParser):
         attributes = []
         for att in expr.attributes:
             if att.value is None:
-                attnew = Variable(att.annotation, att.target)
+                dtype = att.annotation
+                cls = self.get_class(dtype)
+                if cls is None:
+                    attnew = Variable(dtype, att.target)
+                else:
+                    dtype = DataTypeFactory(dtype, '_name')
+                    attnew = Variable(dtype, att.target, cls_base=cls)
+
             else:
                 attnew = ValuedVariable(att.annotation, att.target, value=att.value)
 
