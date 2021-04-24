@@ -34,6 +34,7 @@ from pyccel.ast.core import ValuedFunctionAddress
 from pyccel.ast.core import FunctionDef, Interface, FunctionAddress, FunctionCall
 from pyccel.ast.core import DottedFunctionCall
 from pyccel.ast.core import ClassDef
+from pyccel.ast.core import StructuredTypeDef
 from pyccel.ast.core import StructuredTypeConstructor
 from pyccel.ast.core import For, FunctionalFor, ForIterator
 from pyccel.ast.core import While
@@ -2905,12 +2906,27 @@ class SemanticParser(BasicParser):
         return StructuredTypeConstructor(expr.name, arguments)
 
     def _visit_StructuredTypeDef(self, expr, **settings):
+        # we convert the Annotated Assign into a Variable or ValuedVariable
+        attributes = []
+        for att in expr.attributes:
+            if att.value is None:
+                attnew = Variable(att.annotation, att.target)
+            else:
+                attnew = ValuedVariable(att.annotation, att.target, value=att.value)
+
+            attributes.append(attnew)
+
+        name = expr.name
+        expr = StructuredTypeDef(name, attributes=attributes)
+
         # we check that valued variables are semanticly correct
         valued = [i for i in expr.attributes if isinstance(i, ValuedVariable)]
         for i in valued:
             # TODO ARA add error msg
             assert(i.dtype is i.value.dtype)
 
+        # update the namespace
+        self.namespace._classes[name] = expr
         return expr
 
     def _visit_ClassDef(self, expr, **settings):
