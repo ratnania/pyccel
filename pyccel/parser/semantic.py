@@ -2903,8 +2903,14 @@ class SemanticParser(BasicParser):
         for att in attributes:
             value = kwargs[att.name]
             arguments.append(value)
-            assert(att.dtype is value.dtype)
-            # TODO ARA add error msg
+
+            if not( att.dtype is value.dtype ):
+                txt = '|{name}| {dtype} <-> {v_dtype}'
+                txt = txt.format(name=att.name, dtype=att.dtype, v_dtype=value.dtype)
+
+                errors.report(INCOMPATIBLE_TYPES_IN_TYPE_CONSTRUCTOR,
+                              symbol=txt, severity='error', blocker=False)
+
 
         return StructuredTypeConstructor(expr.name, arguments)
 
@@ -2932,8 +2938,12 @@ class SemanticParser(BasicParser):
         # we check that valued variables are semanticly correct
         valued = [i for i in expr.attributes if isinstance(i, ValuedVariable)]
         for i in valued:
-            # TODO ARA add error msg
-            assert(i.dtype is i.value.dtype)
+            if not( i.dtype is i.value.dtype ):
+                txt = '|{name}| {dtype} <-> {v_dtype}'
+                txt = txt.format(name=i.name, dtype=i.dtype, v_dtype=i.value.dtype)
+
+                errors.report(INCOMPATIBLE_TYPES_IN_ANNOTATED_ASSIGNMENT,
+                              symbol=txt, severity='error', blocker=False)
 
         # update the namespace
         self.namespace._classes[name] = expr

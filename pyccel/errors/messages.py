@@ -21,6 +21,8 @@ RECURSIVE_RESULTS_REQUIRED = ("A results type must be provided for recursive fun
 
 INCOMPATIBLE_TYPES = 'Incompatible types'
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
+INCOMPATIBLE_TYPES_IN_ANNOTATED_ASSIGNMENT = 'Incompatible types in an annotated assignment'
+INCOMPATIBLE_TYPES_IN_TYPE_CONSTRUCTOR = 'Incompatible types when calling a Type Constructor'
 INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
 INCOMPATIBLE_REDEFINITION_STACK_ARRAY = 'Cannot change shape of stack array, because it does not support memory reallocation. Avoid redefinition, or use standard heap array.'
 STACK_ARRAY_DEFINITION_IN_LOOP = 'Cannot create stack array in loop, because if does not support memory reallocation. Create array before loop, or use standard heap array.'
