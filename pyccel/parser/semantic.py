@@ -2894,10 +2894,14 @@ class SemanticParser(BasicParser):
         for att, arg in zip(attributes, args):
             arguments.append(arg)
             # TODO ARA cruches when nested types
-#            assert(att.dtype is arg.dtype)
             # example:   <class 'pyccel.ast.datatypes.PyccelPoint'> <class 'pyccel.ast.datatypes.PyccelPoint'>
-#            print(att.dtype, arg.dtype, att.dtype == arg.dtype)
-            # TODO ARA add error msg
+
+            if not( att.dtype is arg.dtype ):
+                txt = '|{name}| {dtype} <-> {a_dtype}'
+                txt = txt.format(name=att.name, dtype=att.dtype, a_dtype=arg.dtype)
+
+                errors.report(INCOMPATIBLE_TYPES_IN_TYPE_CONSTRUCTOR,
+                              symbol=txt, severity='error', blocker=False)
 
         attributes = cls.attributes[len(args):]
         for att in attributes:
