@@ -2884,8 +2884,8 @@ class SemanticParser(BasicParser):
         args   = []
         kwargs = OrderedDict()
         for i in arguments:
-            if isinstance(i, ValuedArgument):
-                kwargs[i.name] = i
+            if isinstance(i, ValuedVariable):
+                kwargs[i.name] = i.value
             else:
                 args.append(i)
 
@@ -2901,8 +2901,7 @@ class SemanticParser(BasicParser):
 
         attributes = cls.attributes[len(args):]
         for att in attributes:
-            arg = kwargs[att.name]
-            value = arg.value
+            value = kwargs[att.name]
             arguments.append(value)
             assert(att.dtype is value.dtype)
             # TODO ARA add error msg
