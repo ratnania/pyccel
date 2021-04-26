@@ -2893,10 +2893,16 @@ class SemanticParser(BasicParser):
         attributes = cls.attributes[:len(args)]
         for att, arg in zip(attributes, args):
             arguments.append(arg)
-            # TODO ARA cruches when nested types
-            # example:   <class 'pyccel.ast.datatypes.PyccelPoint'> <class 'pyccel.ast.datatypes.PyccelPoint'>
 
-            if not( att.dtype is arg.dtype ):
+            is_same_typedef = lambda l, r: (
+                                            hasattr(l, 'is_datatype') and
+                                            hasattr(r, 'is_datatype') and
+                                            l.is_datatype and
+                                            r.is_datatype and
+                                            l._name == r._name
+            )
+
+            if not( att.dtype is arg.dtype ) and not is_same_typedef( att.dtype, arg.dtype ):
                 txt = '|{name}| {dtype} <-> {a_dtype}'
                 txt = txt.format(name=att.name, dtype=att.dtype, a_dtype=arg.dtype)
 
