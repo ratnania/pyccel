@@ -2931,11 +2931,27 @@ class SemanticParser(BasicParser):
             if att.value is None:
                 dtype = att.annotation
                 cls = self.get_class(dtype)
-                if cls is None:
+
+                from pyccel.ast.datatypes import dtype_registry
+                if dtype in dtype_registry.keys():
                     attnew = Variable(dtype, att.target)
-                else:
+
+                elif not( cls is None ):
                     dtype = DataTypeFactory(dtype, '_name')
                     attnew = Variable(dtype, att.target, cls_base=cls)
+
+                else:
+                    # TODO we should use regex here
+                    from pyccel.parser.syntax.headers import parse
+                    stmt = '#$ header variable {name} :: {dtype}'.format( name  = att.target,
+                                                                          dtype = str(dtype) )
+                    e = parse(stmts=stmt)
+                    name  = e.name
+                    d_var = e.dtypes.copy()
+                    dtype = d_var.pop('datatype')
+                    d_var.pop('is_func')
+
+                    attnew = Variable(dtype, name, **d_var)
 
             else:
                 attnew = ValuedVariable(att.annotation, att.target, value=att.value)
