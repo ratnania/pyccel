@@ -1064,7 +1064,7 @@ class SemanticParser(BasicParser):
 
         if isinstance(lhs, IndexedElement):
             lhs = self._visit(lhs)
-        elif isinstance(lhs, PyccelSymbol):
+        elif isinstance(lhs, PyccelSymbol) or isinstance(lhs, DottedName):
 
             name = lhs
             dtype = d_var.pop('datatype')
@@ -1089,8 +1089,14 @@ class SemanticParser(BasicParser):
                         if lhs in decorators['allow_negative_index']:
                             d_lhs.update(allows_negative_indexes=True)
 
+                if isinstance(lhs, DottedName):
+                    # TODO ARA should we put v or its dtype
+                    v = self.get_variable(lhs.name[:-1][0])
+                    d_lhs['cls_parent'] = v
+
                 # Create new variable
                 lhs = self._create_variable(name, dtype, rhs, d_lhs)
+
 
                 # Add variable to scope
                 self.insert_variable(lhs, name=lhs.name)
@@ -1232,42 +1238,42 @@ class SemanticParser(BasicParser):
                 # declared
                 lhs = var
 
-        elif isinstance(lhs, DottedName):
-
-            dtype = d_var.pop('datatype')
-            name = lhs.name[:-1]
-            if self._current_function == '__init__':
-
-                cls      = self.get_variable('self')
-                cls_name = str(cls.cls_base.name)
-                cls      = self.get_class(cls_name)
-
-                attributes = cls.attributes
-                parent     = cls.superclass
-                attributes = list(attributes)
-                n_name     = str(lhs.name[-1])
-
-                # update the self variable with the new attributes
-
-                dt       = self.get_class_construct(cls_name)()
-                cls_base = self.get_class(cls_name)
-                var      = Variable(dt, 'self', cls_base=cls_base)
-                d_lhs    = d_var.copy()
-                self.insert_variable(var, 'self')
-
-
-                # ISSUES #177: lhs must be a pointer when rhs is allocatable array
-                self._ensure_target(rhs, d_lhs)
-
-                member = self._create_variable(n_name, dtype, rhs, d_lhs)
-                lhs    = member.clone(member.name, new_class = DottedVariable, lhs = var)
-
-                # update the attributes of the class and push it to the namespace
-                attributes += [member]
-                new_cls = ClassDef(cls_name, attributes, [], superclass=parent)
-                self.insert_class(new_cls, parent=True)
-            else:
-                lhs = self._visit(lhs, **settings)
+#        elif isinstance(lhs, DottedName):
+#            # TODO ARA UNCOMMENT
+#            dtype = d_var.pop('datatype')
+#            name = lhs.name[:-1]
+#            if self._current_function == '__init__':
+#
+#                cls      = self.get_variable('self')
+#                cls_name = str(cls.cls_base.name)
+#                cls      = self.get_class(cls_name)
+#
+#                attributes = cls.attributes
+#                parent     = cls.superclass
+#                attributes = list(attributes)
+#                n_name     = str(lhs.name[-1])
+#
+#                # update the self variable with the new attributes
+#
+#                dt       = self.get_class_construct(cls_name)()
+#                cls_base = self.get_class(cls_name)
+#                var      = Variable(dt, 'self', cls_base=cls_base)
+#                d_lhs    = d_var.copy()
+#                self.insert_variable(var, 'self')
+#
+#
+#                # ISSUES #177: lhs must be a pointer when rhs is allocatable array
+#                self._ensure_target(rhs, d_lhs)
+#
+#                member = self._create_variable(n_name, dtype, rhs, d_lhs)
+#                lhs    = member.clone(member.name, new_class = DottedVariable, lhs = var)
+#
+#                # update the attributes of the class and push it to the namespace
+#                attributes += [member]
+#                new_cls = ClassDef(cls_name, attributes, [], superclass=parent)
+#                self.insert_class(new_cls, parent=True)
+#            else:
+#                lhs = self._visit(lhs, **settings)
         else:
             raise NotImplementedError("_assign_lhs_variable does not handle {}".format(str(type(lhs))))
 
@@ -2950,6 +2956,7 @@ class SemanticParser(BasicParser):
                     d_var = e.dtypes.copy()
                     dtype = d_var.pop('datatype')
                     d_var.pop('is_func')
+#                    d_var['is_pointer'] = True
 
                     attnew = Variable(dtype, name, **d_var)
 
