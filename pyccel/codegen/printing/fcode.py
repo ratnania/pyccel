@@ -1029,6 +1029,11 @@ class FCodePrinter(CodePrinter):
         if (isinstance(expr.variable, Variable) and
             expr.variable.name.startswith('__')):
             return ''
+
+        # if variable is an attribute of a class or structured type, then we
+        # will not declare it (again)
+        if expr.variable.cls_parent:
+            return ''
         # ...
 
         if isinstance(expr.variable, TupleVariable) and not expr.variable.is_homogeneous:
