@@ -2499,6 +2499,13 @@ class StructuredTypeDef(Basic):
     def interfaces(self):
         return self._interfaces
 
+    def get_attribute(self, name):
+        for i in self.attributes:
+            if i.name == name:
+                return i
+
+        return None
+
 class DeclareType(Basic):
 
     """Represents a the declaration of typed structure constructor
