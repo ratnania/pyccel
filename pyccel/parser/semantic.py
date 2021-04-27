@@ -2917,16 +2917,16 @@ class SemanticParser(BasicParser):
 
         attributes = cls.attributes[len(args):]
         for att in attributes:
-            value = kwargs[att.name]
-            arguments.append(value)
+            if att.name in kwargs.keys():
+                value = kwargs[att.name]
+                arguments.append(value)
 
-            if not( att.dtype is value.dtype ):
-                txt = '|{name}| {dtype} <-> {v_dtype}'
-                txt = txt.format(name=att.name, dtype=att.dtype, v_dtype=value.dtype)
+                if not( att.dtype is value.dtype ):
+                    txt = '|{name}| {dtype} <-> {v_dtype}'
+                    txt = txt.format(name=att.name, dtype=att.dtype, v_dtype=value.dtype)
 
-                errors.report(INCOMPATIBLE_TYPES_IN_TYPE_CONSTRUCTOR,
-                              symbol=txt, severity='error', blocker=False)
-
+                    errors.report(INCOMPATIBLE_TYPES_IN_TYPE_CONSTRUCTOR,
+                                  symbol=txt, severity='error', blocker=False)
 
         return StructuredTypeConstructor(expr.name, arguments)
 
