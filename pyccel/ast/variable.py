@@ -91,6 +91,9 @@ class Variable(PyccelAstNode):
         Indicates if this symbol represents a temporary variable created by Pyccel,
         and was not present in the original Python code [default value : False].
 
+    cls_parent: class
+        class base if variable is an object member [Default value: None]
+
     Examples
     --------
     >>> from pyccel.ast.core import Variable
@@ -105,7 +108,7 @@ class Variable(PyccelAstNode):
     __slots__ = ('_name', '_alloc_shape', '_allocatable', '_is_const', '_is_pointer',
             '_is_stack_array', '_is_target', '_is_optional', '_allows_negative_indexes',
             '_cls_base', '_is_argument', '_is_kwonly', '_is_temp','_dtype','_precision',
-            '_rank','_shape','_order')
+            '_rank','_shape','_order','_cls_parent')
     _attribute_nodes = ()
 
     def __init__(
@@ -127,7 +130,8 @@ class Variable(PyccelAstNode):
         is_argument=False,
         is_kwonly=False,
         is_temp =False,
-        allows_negative_indexes=False
+        allows_negative_indexes=False,
+        cls_parent=None
         ):
         super().__init__()
 
@@ -210,6 +214,7 @@ class Variable(PyccelAstNode):
         self._allows_negative_indexes = allows_negative_indexes
 
         self._cls_base       = cls_base
+        self._cls_parent     = cls_parent
         self._order          = order
         self._is_argument    = is_argument
         self._is_kwonly      = is_kwonly
@@ -275,6 +280,12 @@ class Variable(PyccelAstNode):
         """ Class from which the Variable inherits
         """
         return self._cls_base
+
+    @property
+    def cls_parent(self):
+        """ if self is a member of cls_parent
+        """
+        return self._cls_parent
 
     @property
     def is_const(self):
@@ -520,6 +531,9 @@ class DottedName(Basic):
 
     def __str__(self):
         return """.""".join(str(n) for n in self.name)
+
+    def startswith(self, txt):
+        return self.name[0].startswith(txt)
 
 class ValuedVariable(Variable):
 
