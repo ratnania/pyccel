@@ -1110,13 +1110,6 @@ def test_array_real_3d_C_array_initialization_1(language):
 
     assert np.array_equal(x1, x2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="array function doesn't handle 3d lists. See #751"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_array_real_3d_C_array_initialization_2(language):
 
     f1 = arrays.array_real_3d_C_array_initialization_2
@@ -1307,13 +1300,6 @@ def test_array_real_3d_F_array_initialization_1(language):
 
     assert np.array_equal(x1, x2)
 
-@pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
-            pytest.mark.skip(reason="array function doesn't handle 3d lists. See #751"),
-            pytest.mark.c]),
-        pytest.param("fortran", marks = pytest.mark.fortran)
-    ]
-)
 def test_array_real_3d_F_array_initialization_2(language):
 
     f1 = arrays.array_real_3d_F_array_initialization_2

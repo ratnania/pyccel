@@ -33,6 +33,8 @@ __all__ = [
         'tuples_inhomogeneous_copies_have_pointers',
         'tuples_mul_homogeneous',
         'tuples_mul_homogeneous2',
+        'tuples_mul_homogeneous3',
+        'tuples_mul_homogeneous4',
         'tuples_mul_inhomogeneous',
         'tuples_mul_inhomogeneous2',
         'tuples_mul_homogeneous_2d',
@@ -97,12 +99,12 @@ def homogeneous_tuple_2_levels():
     return ai[0][0], ai[0][1] ,ai[0][2], ai[1][0], ai[1][1], ai[1][2]
 
 def tuple_unpacking_1():
-    ai = (1,False,3.0)
+    ai = (1,False,3.5)
     a,b,c = ai
     return a,b,c
 
 def tuple_unpacking_2():
-    a,b,c = 1,False,3.0
+    a,b,c = 1,False,3.5
     return a,b,c
 
 def tuple_unpacking_3(x : 'int[:,:]'):
@@ -112,7 +114,7 @@ def tuple_unpacking_4(x : 'int[:,:]'):
     x[:,0], x[0,:] = 2, 3
 
 def tuple_name_clash():
-    ai = (1+2j, False, 10.0)
+    ai = (1+2j, False, 10.4)
     ai_0 = 44
     return ai_0, ai[0], ai[1], ai[2]
 
@@ -245,6 +247,17 @@ def tuples_mul_homogeneous():
 def tuples_mul_homogeneous2():
     a = (1,2,3)
     b = 2*a
+    return b[0], b[1], b[2], b[3], b[4], b[5]
+
+def tuples_mul_homogeneous3():
+    a = (1,2,3)
+    s = 2
+    b = a*s
+    return b[0], b[1], b[2], b[3], b[4], b[5]
+
+def tuples_mul_homogeneous4():
+    s = 2
+    b = (1,2,3)*s
     return b[0], b[1], b[2], b[3], b[4], b[5]
 
 def tuples_mul_inhomogeneous():

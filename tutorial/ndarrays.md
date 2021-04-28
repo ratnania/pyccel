@@ -95,21 +95,18 @@ This limitation is due to the fact that the rank of Fortran allocatable objects 
     -   C equivalent:
 
         ```C
-        #include <ndarrays.h>
+        #include "ndarrays.h"
         #include <stdlib.h>
         int main()
         {
             t_ndarray a;
-            a = array_create(1, (int32_t[]){20}, nd_double);
+            a = array_create(1, (int64_t[]){20}, nd_double);
             array_fill((double)1.0, a);
             /*(some code...)*/
-            if (a.shape != NULL)
-            {
-                free_array(a); //this line handles the redefinition of the array
-            }
-            a = array_create(1, (int32_t[]){10}, nd_double);
+            free_array(a);
+            a = array_create(1, (int64_t[]){10}, nd_double);
             array_fill((double)1.0, a);
-            free_array(a); //garbage collection at the end of the program
+            free_array(a);
             return 0;
         }
         ```
@@ -125,16 +122,12 @@ This limitation is due to the fact that the rank of Fortran allocatable objects 
 
         real(C_DOUBLE), allocatable :: a(:)
 
-        allocate(a(0:20_C_INT64_T - 1_C_INT64_T))
+        allocate(a(0:19_C_INT64_T))
         a = 1.0_C_DOUBLE
         !(some code...)
-        if (allocated(a)) then
         if (any(size(a) /= [10_C_INT64_T])) then
-          deallocate(a)
-          allocate(a(0:10_C_INT64_T - 1_C_INT64_T))
-        end if
-        else
-        allocate(a(0:10_C_INT64_T - 1_C_INT64_T))
+        deallocate(a)
+        allocate(a(0:9_C_INT64_T))
         end if
         a = 1.0_C_DOUBLE
 
@@ -180,18 +173,15 @@ Some examples:
     -   C equivalent:
 
         ```C
-        #include <ndarrays.h>
-        #include <stdint.h>
         #include <stdlib.h>
+        #include "ndarrays.h"
+        #include <stdint.h>
         int main()
         {
             t_ndarray a;
-
-
-            a = array_create(1, (int32_t[]){4}, nd_int64);
+            a = array_create(1, (int64_t[]){4}, nd_int64);
             int64_t array_dummy_0001[] = {1, 3, 4, 5};
             memcpy(a.nd_int64, array_dummy_0001, a.buffer_size);
-
             a.nd_int64[get_index(a, 0)] = 0;
             free_array(a);
             return 0;
@@ -209,7 +199,7 @@ Some examples:
 
         integer(C_INT64_T), allocatable :: a(:)
 
-        allocate(a(0:4_C_INT64_T - 1_C_INT64_T))
+        allocate(a(0:3_C_INT64_T))
         a = [1_C_INT64_T, 3_C_INT64_T, 4_C_INT64_T, 5_C_INT64_T]
         a(0_C_INT64_T) = 0_C_INT64_T
 
@@ -228,21 +218,18 @@ Some examples:
     -   C equivalent:
 
         ```C
+        #include "ndarrays.h"
         #include <stdlib.h>
-        #include <ndarrays.h>
         int main()
         {
             t_ndarray a;
             t_ndarray b;
-
-
-          a = array_create(2, (int32_t[]){10, 20}, nd_double);
-          array_fill((double)1.0, a);
-
-          b = array_slicing(a, new_slice(2, a.shape[0], 1), new_slice(5, a.shape[1], 1));
-          free_array(a);
-          free_pointer(b);
-          return 0;
+            a = array_create(2, (int64_t[]){10, 20}, nd_double);
+            array_fill((double)1.0, a);
+            b = array_slicing(a, 2, new_slice(2, a.shape[0], 1), new_slice(0, 5, 1));
+            free_array(a);
+            free_pointer(b);
+            return 0;
         }
         ```
 
@@ -258,9 +245,9 @@ Some examples:
         real(C_DOUBLE), allocatable, target :: a(:,:)
         real(C_DOUBLE), pointer :: b(:,:)
 
-        allocate(a(0:20_C_INT64_T - 1_C_INT64_T, 0:10_C_INT64_T - 1_C_INT64_T))
+        allocate(a(0:19_C_INT64_T, 0:9_C_INT64_T))
         a = 1.0_C_DOUBLE
-        b(0:, 0:) => a(5_C_INT64_T:, 2_C_INT64_T:)
+        b(0:, 0:) => a(:4_C_INT64_T, 2_C_INT64_T:)
 
         end program prog_ex
         ```
@@ -279,27 +266,24 @@ Some examples:
     -   C equivalent:
 
         ```C
+        #include <stdio.h>
         #include <stdint.h>
         #include <stdlib.h>
-        #include <ndarrays.h>
-        #include <stdio.h>
+        #include "ndarrays.h"
         int main()
         {
             t_ndarray a;
             t_ndarray b;
             int64_t c;
-
-
-          a = array_create(2, (int32_t[]){2, 4}, nd_int64);
-          int64_t array_dummy_0001[] = {1, 2, 3, 4, 5, 6, 7, 8};
-          memcpy(a.nd_int64, array_dummy_0001, a.buffer_size);
-
-          b = array_slicing(a, 1, new_slice(1, 1+1, 1),   new_slice(0, a.shape[1], 1));
-          c = b.nd_int64[get_index(b, 2)];
-          printf("%ld\n", c);
-          free_array(a);
-          free_pointer(b);
-          return 0;
+            a = array_create(2, (int64_t[]){2, 4}, nd_int64);
+            int64_t array_dummy_0001[] = {1, 2, 3, 4, 5, 6, 7, 8};
+            memcpy(a.nd_int64, array_dummy_0001, a.buffer_size);
+            b = array_slicing(a, 1, new_slice(1, 2, 1), new_slice(0, a.shape[1], 1));
+            c = b.nd_int64[get_index(b, 2)];
+            printf("%ld\n", c);
+            free_array(a);
+            free_pointer(b);
+            return 0;
         }
         ```
 
@@ -316,7 +300,7 @@ Some examples:
         integer(C_INT64_T), pointer :: b(:)
         integer(C_INT64_T) :: c
 
-        allocate(a(0:4_C_INT64_T - 1_C_INT64_T, 0:2_C_INT64_T - 1_C_INT64_T))
+        allocate(a(0:3_C_INT64_T, 0:1_C_INT64_T))
         a = reshape([[1_C_INT64_T, 2_C_INT64_T, 3_C_INT64_T, 4_C_INT64_T], [ &
             5_C_INT64_T, 6_C_INT64_T, 7_C_INT64_T, 8_C_INT64_T]], [ &
             4_C_INT64_T, 2_C_INT64_T])
@@ -326,3 +310,19 @@ Some examples:
 
         end program prog_ex
         ```
+
+## Numpy [ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) functions/properties progress in Pyccel ##
+
+-   Supported [types](https://numpy.org/devdocs/user/basics.types.html):
+
+    bool, int, int8, int16, int32, int64, float, float32, float64, complex64 and complex128. They can be used as cast functions too.
+
+    Note: np.bool, np.int and np.float are just aliases to the Python native types, and are considered as a deprecated way to work with Python built-in types in NumPy.
+
+-   Properties:
+
+    -   real, imag, shape, amax, amin
+
+-   Methods:
+
+    -   sum

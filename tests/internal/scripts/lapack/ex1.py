@@ -26,7 +26,7 @@ def test_1():
     lda = 2 * ml + mu + 1
 
     a = zeros((lda,n))
-    b = zeros(n)
+    b = zeros((1,n))
 
     b[0]   = 1.0
     b[n-1] = 1.0
@@ -136,7 +136,7 @@ def test_4():
 #    assert(info == 0)
 
     # Compute the inverse matrix.
-    b = zeros(n)
+    b = zeros((1,n))
     b[0] = 14.0
     b[1] = 32.0
     b[2] = 23.0

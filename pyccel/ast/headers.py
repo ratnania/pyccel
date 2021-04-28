@@ -726,9 +726,10 @@ class MacroFunction(Header):
                 else:
                     raise ValueError('Unknown variable name')
 
-                new = construct_macro(arg.name, new)
                 if isinstance(arg, MacroShape):
-                    new._index = arg.index
+                    new = construct_macro(arg.name, new, arg.index)
+                else:
+                    new = construct_macro(arg.name, new)
 
             newargs[i] = new
         return newargs

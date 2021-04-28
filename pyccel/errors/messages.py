@@ -26,6 +26,7 @@ INCOMPATIBLE_TYPES_IN_TYPE_CONSTRUCTOR = 'Incompatible types when calling a Type
 INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
 INCOMPATIBLE_REDEFINITION_STACK_ARRAY = 'Cannot change shape of stack array, because it does not support memory reallocation. Avoid redefinition, or use standard heap array.'
 STACK_ARRAY_DEFINITION_IN_LOOP = 'Cannot create stack array in loop, because if does not support memory reallocation. Create array before loop, or use standard heap array.'
+INCOMPATIBLE_ARGUMENT = 'Incompatible argument {} passed to function (expected {}). Please cast the argument explicitly or overload the function (see https://github.com/pyccel/pyccel/blob/master/tutorial/headers.md for details)'
 
 UNSUPPORTED_ARRAY_RETURN_VALUE = 'Array return arguments are currently not supported'
 

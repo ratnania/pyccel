@@ -8,8 +8,6 @@ runs:
         # Use utf for output
         $PSDefaultParameterValues['Out-File:Encoding'] = 'Ascii'
         #
-        # Change default C compiler from M$ to mingw in distutils.cfg
-        echo "[build]`ncompiler = mingw32" >> ${Env:pythonLocation}\\Lib\\distutils\\distutils.cfg
         sed '/return \[''msvcr100''\]/ a \        elif msc_ver == ''1900'':\\n            return [''msvcr140'']' ${Env:pythonLocation}\\Lib\\distutils\\cygwinccompiler.py > sed_tmp.py
         Move-Item -Path sed_tmp.py -Destination ${Env:pythonLocation}\\Lib\\distutils\\cygwinccompiler.py -Force
       shell: powershell

@@ -46,15 +46,22 @@ class Macro(PyccelAstNode):
 #==============================================================================
 class MacroShape(Macro):
     """."""
-    __slots__ = ('_index',)
+    __slots__ = ('_index','_rank','_shape')
     _name      = 'shape'
     _dtype     = NativeInteger()
     _precision = default_precision['integer']
-    _rank      = 1
-    _shape     = ()
     _order     = None
 
     def __init__(self, argument, index=None):
+        if index is not None:
+            self._rank = 0
+            self._shape = ()
+        elif PyccelAstNode.stage != "syntactic":
+            self._rank      = int(argument.rank>1)
+            self._shape     = (argument.rank,)
+        else:
+            self._rank      = 1
+            self._shape     = ()
         self._index = index
         super().__init__(argument)
 

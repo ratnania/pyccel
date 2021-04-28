@@ -41,6 +41,8 @@ import_target_swap = {
                    'empty_like' : 'empty',
                    'zeros_like' : 'zeros',
                    'ones_like'  : 'ones',
+                   'max'        : 'amax',
+                   'min'        : 'amin',
                    'full_like'  : 'full'},
         'numpy.random' : {'random' : 'rand'}
         }

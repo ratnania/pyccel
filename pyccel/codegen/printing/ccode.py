@@ -10,6 +10,7 @@ import operator
 
 from pyccel.ast.builtins  import PythonRange, PythonComplex, PythonEnumerate
 from pyccel.ast.builtins  import PythonZip, PythonMap, PythonLen, PythonPrint
+from pyccel.ast.builtins  import PythonList, PythonTuple
 
 from pyccel.ast.core      import Declare, For, CodeBlock
 from pyccel.ast.core      import FuncAddressDeclare, FunctionCall, FunctionDef
@@ -20,7 +21,7 @@ from pyccel.ast.core      import SeparatorComment
 from pyccel.ast.core      import create_incremented_string
 
 from pyccel.ast.operators import PyccelAdd, PyccelMul, PyccelMinus, PyccelLt, PyccelGt
-from pyccel.ast.operators import PyccelAssociativeParenthesis
+from pyccel.ast.operators import PyccelAssociativeParenthesis, PyccelMod
 from pyccel.ast.operators import PyccelUnarySub, IfTernaryOperator
 
 from pyccel.ast.datatypes import NativeInteger, NativeBool, NativeComplex
@@ -40,6 +41,7 @@ from pyccel.ast.utilities import expand_to_loops
 from pyccel.ast.variable import ValuedVariable
 from pyccel.ast.variable import PyccelArraySize, Variable, VariableAddress
 from pyccel.ast.variable import DottedName
+from pyccel.ast.variable import InhomogeneousTupleVariable
 
 from pyccel.ast.sympy_helper import pyccel_to_sympy
 
@@ -257,6 +259,13 @@ class CCodePrinter(CodePrinter):
         rows, cols = mat.shape
         return ((i, j) for i in range(rows) for j in range(cols))
 
+    def _flatten_list(self, irregular_list):
+        if isinstance(irregular_list, (PythonList, PythonTuple)):
+            f_list = [element for item in irregular_list for element in self._flatten_list(item)]
+            return f_list
+        else:
+            return [irregular_list]
+
     #========================== Numpy Elements ===============================#
     def copy_NumpyArray_Data(self, expr):
         """ print the assignment of a NdArray
@@ -282,7 +291,8 @@ class CCodePrinter(CodePrinter):
         arg = rhs.arg
         if rhs.rank > 1:
             # flattening the args to use them in C initialization.
-            arg = functools.reduce(operator.concat, arg)
+            arg = self._flatten_list(arg)
+
         if isinstance(arg, Variable):
             arg = self._print(arg)
             if expr.lhs.is_stack_array:
@@ -323,7 +333,9 @@ class CCodePrinter(CodePrinter):
             sympy_shapes = [pyccel_to_sympy(s, symbol_map, used_names_tmp) for s in lhs.alloc_shape]
 
             length = functools.reduce(operator.mul, sympy_shapes)
-            length_code = '*'.join(self._print(i) for i in lhs.alloc_shape)
+            printable_length = functools.reduce(PyccelMul, lhs.alloc_shape)
+
+            length_code = self._print(printable_length)
 
             if length.is_constant():
                 buffer_array = "({declare_dtype}[{length}]){{}}".format(
@@ -748,8 +760,7 @@ class CCodePrinter(CodePrinter):
                     args = []
                 for_index = Variable(NativeInteger(), name = self._parser.get_new_name('i'))
                 self._additional_declare.append(for_index)
-                #TODO: Add simplify=True with PR #797
-                max_index = PyccelMinus(PythonLen(orig_args[i]), LiteralInteger(1))
+                max_index = PyccelMinus(orig_args[i].shape[0], LiteralInteger(1), simplify = True)
                 for_range = PythonRange(max_index)
                 print_body = [ orig_args[i][for_index] ]
                 if orig_args[i].rank == 1:
@@ -826,6 +837,9 @@ class CCodePrinter(CodePrinter):
         return '{}(*{})({});\n'.format(ret_type, name, arg_code)
 
     def _print_Declare(self, expr):
+        if isinstance(expr.variable, InhomogeneousTupleVariable):
+            return ''.join(self._print_Declare(Declare(v.dtype,v,intent=expr.intent, static=expr.static)) for v in expr.variable)
+
         declaration_type = self.get_declare_type(expr.variable)
         variable = self._print(expr.variable.name)
 
@@ -896,7 +910,7 @@ class CCodePrinter(CodePrinter):
         allow_negative_indexes = base.allows_negative_indexes
         for i, ind in enumerate(inds):
             if isinstance(ind, PyccelUnarySub) and isinstance(ind.args[0], LiteralInteger):
-                inds[i] = PyccelMinus(base_shape[i], ind.args[0])
+                inds[i] = PyccelMinus(base_shape[i], ind.args[0], simplify = True)
             else:
                 #indices of indexedElement of len==1 shouldn't be a tuple
                 if isinstance(ind, tuple) and len(ind) == 1:
@@ -904,7 +918,7 @@ class CCodePrinter(CodePrinter):
                 if allow_negative_indexes and \
                         not isinstance(ind, LiteralInteger) and not isinstance(ind, Slice):
                     inds[i] = IfTernaryOperator(PyccelLt(ind, LiteralInteger(0)),
-                        PyccelAdd(base_shape[i], ind), ind)
+                        PyccelAdd(base_shape[i], ind, simplify = True), ind)
         #set dtype to the C struct types
         dtype = self._print(expr.dtype)
         dtype = self.find_in_ndarray_type_registry(dtype, expr.precision)
@@ -917,7 +931,7 @@ class CCodePrinter(CodePrinter):
                         inds[i] = self._new_slice_with_processed_arguments(ind, PyccelArraySize(base, i),
                             allow_negative_indexes)
                     else:
-                        inds[i] = Slice(ind, PyccelAdd(ind, LiteralInteger(1)), LiteralInteger(1))
+                        inds[i] = Slice(ind, PyccelAdd(ind, LiteralInteger(1), simplify = True), LiteralInteger(1))
                 inds = [self._print(i) for i in inds]
                 return "array_slicing(%s, %s, %s)" % (base_name, expr.rank, ", ".join(inds))
             inds = [self._cast_to(i, NativeInteger(), 8).format(self._print(i)) for i in inds]
@@ -971,16 +985,16 @@ class CCodePrinter(CodePrinter):
 
         # negative start and end in slice
         if isinstance(start, PyccelUnarySub) and isinstance(start.args[0], LiteralInteger):
-            start = PyccelMinus(array_size, start.args[0])
+            start = PyccelMinus(array_size, start.args[0], simplify = True)
         elif allow_negative_index and not isinstance(start, (LiteralInteger, PyccelArraySize)):
             start = IfTernaryOperator(PyccelLt(start, LiteralInteger(0)),
-                            PyccelMinus(array_size, start), start)
+                            PyccelMinus(array_size, start, simplify = True), start)
 
         if isinstance(stop, PyccelUnarySub) and isinstance(stop.args[0], LiteralInteger):
-            stop = PyccelMinus(array_size, stop.args[0])
+            stop = PyccelMinus(array_size, stop.args[0], simplify = True)
         elif allow_negative_index and not isinstance(stop, (LiteralInteger, PyccelArraySize)):
             stop = IfTernaryOperator(PyccelLt(stop, LiteralInteger(0)),
-                            PyccelMinus(array_size, stop), stop)
+                            PyccelMinus(array_size, stop, simplify = True), stop)
 
         # steps in slices
         step = _slice.step
@@ -990,13 +1004,13 @@ class CCodePrinter(CodePrinter):
 
         # negative step in slice
         elif isinstance(step, PyccelUnarySub) and isinstance(step.args[0], LiteralInteger):
-            start = PyccelMinus(array_size, LiteralInteger(1)) if _slice.start is None else start
+            start = PyccelMinus(array_size, LiteralInteger(1), simplify = True) if _slice.start is None else start
             stop = LiteralInteger(0) if _slice.stop is None else stop
 
         # variable step in slice
         elif allow_negative_index and step and not isinstance(step, LiteralInteger):
             og_start = start
-            start = IfTernaryOperator(PyccelGt(step, LiteralInteger(0)), start, PyccelMinus(stop, LiteralInteger(1)))
+            start = IfTernaryOperator(PyccelGt(step, LiteralInteger(0)), start, PyccelMinus(stop, LiteralInteger(1), simplify = True))
             stop = IfTernaryOperator(PyccelGt(step, LiteralInteger(0)), stop, og_start)
 
         return Slice(start, stop, step)
@@ -1022,6 +1036,8 @@ class CCodePrinter(CodePrinter):
         return '{}{}'.format(free_code, alloc_code)
 
     def _print_Deallocate(self, expr):
+        if isinstance(expr.variable, InhomogeneousTupleVariable):
+            return ''.join(self._print(Deallocate(v)) for v in expr.variable)
         if expr.variable.is_pointer:
             return 'free_pointer({});\n'.format(self._print(expr.variable))
         return 'free_array({});\n'.format(self._print(expr.variable))
@@ -1176,6 +1192,9 @@ class CCodePrinter(CodePrinter):
 
     def _print_NumpyRandint(self, expr):
         raise NotImplementedError("Randint not implemented")
+
+    def _print_NumpyMod(self, expr):
+        return self._print(PyccelMod(*expr.args))
 
     def _print_Interface(self, expr):
         return ""

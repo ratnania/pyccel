@@ -54,10 +54,11 @@ __all__ = (
     'CommentBlock',
     'ConstructorCall',
     'Continue',
+    'Deallocate',
     'Declare',
     'DeclareType',
     'Del',
-    'Dlist',
+    'Duplicate',
     'DoConcurrent',
     'EmptyNode',
     'BindCFunctionDef',
@@ -288,9 +289,9 @@ class AsName(Basic):
         return hash(self.target)
 
 
-class Dlist(PyccelAstNode):
+class Duplicate(PyccelAstNode):
 
-    """ this is equivalent to the zeros function of numpy arrays for the python list.
+    """ this is equivalent to the * operator for python tuples.
 
     Parameters
     ----------
@@ -306,7 +307,7 @@ class Dlist(PyccelAstNode):
         self._dtype     = val.dtype
         self._precision = val.precision
         self._rank      = val.rank
-        self._shape     = tuple(s if i!= 0 else PyccelMul(s, length) for i,s in enumerate(val.shape))
+        self._shape     = tuple(s if i!= 0 else PyccelMul(s, length, simplify=True) for i,s in enumerate(val.shape))
         self._order     = val.order
 
         self._val       = val
@@ -320,6 +321,39 @@ class Dlist(PyccelAstNode):
     @property
     def length(self):
         return self._length
+
+    def __str__(self):
+        return '{} * {}'.format(str(self.val), str(self.length))
+
+    def __repr__(self):
+        return '{} * {}'.format(repr(self.val), repr(self.length))
+
+class Concatenate(PyccelAstNode):
+
+    """ this is equivalent to the + operator for python tuples
+
+    Parameters
+    ----------
+    args : PyccelAstNodes
+           The tuples
+    """
+    __slots__ = ('_args','_dtype','_precision','_rank','_shape','_order')
+    _attribute_nodes = ('_args',)
+
+    def __init__(self, arg1, arg2):
+        self._dtype     = arg1.dtype
+        self._precision = arg1.precision
+        self._rank      = arg1.rank
+        shape_addition  = arg2.shape[0]
+        self._shape     = tuple(s if i!= 0 else PyccelAdd(s, shape_addition) for i,s in enumerate(arg1.shape))
+        self._order     = arg1.order
+
+        self._args = (arg1, arg2)
+        super().__init__()
+
+    @property
+    def args(self):
+        return self._args
 
 
 class Assign(Basic):
