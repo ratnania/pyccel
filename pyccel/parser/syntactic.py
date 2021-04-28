@@ -211,7 +211,7 @@ class SyntaxParser(BasicParser):
 
             if n_empty_lines > 3:
                 current_file = start
-            if isinstance(v,(FunctionDef, ClassDef)):
+            if isinstance(v,(FunctionDef, ClassDef, StructuredTypeDef)):
                 # Functions and classes are always defined in a module
                 n_empty_lines = 0
                 mod.append(v)
