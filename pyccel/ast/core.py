@@ -23,7 +23,7 @@ from .datatypes import (datatype, DataType, NativeSymbol,
                         NativeTuple, is_iterable_datatype, str_dtype)
 from .internals      import Slice, PyccelSymbol
 
-from .literals       import LiteralInteger, Nil, convert_to_literal
+from .literals       import LiteralInteger, Nil, convert_to_literal, LiteralString
 from .itertoolsext   import Product
 from .functionalexpr import FunctionalFor
 
@@ -2893,6 +2893,8 @@ class Import(Basic):
 
     @staticmethod
     def _format(i):
+        if isinstance(i, LiteralString):
+            i = i.python_value
         if isinstance(i, str):
             if '.' in i:
                 return DottedName(*i.split('.'))
