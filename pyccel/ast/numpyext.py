@@ -547,31 +547,82 @@ def Shape(arg):
 class NumpyLinspace(NumpyNewArray):
 
     """
-    Represents numpy.linspace.
+    Represents numpy.linspace which returns num evenly spaced samples, calculated over the interval [start, stop].
 
+    Parameters
+      ----------
+      start           : list , tuple , PythonTuple, PythonList, Variable, Literals
+                        Represents the starting value of the sequence.
+      stop            : list , tuple , PythonTuple, PythonList, Variable, Literals
+                        Represents the ending value of the sequence (if endpoint is set to False).
+      num             : int, optional
+                        Number of samples to generate. Default is 50. Must be non-negative.
+      endpoint        : bool, optional
+                        If True, stop is the last sample. Otherwise, it is not included. Default is True.
+      dtype           : str, DataType
+                        The type of the output array. If dtype is not given, the data type is calculated
+                        from start and stop, the calculated dtype will never be an integer.
     """
-    __slots__ = ('_index','_start','_stop','_size','_shape', '_rank')
-    _dtype     = NativeReal()
-    _precision = default_precision['real']
-    _order     = 'F'
 
-    def __init__(self, start, stop, size):
+    __slots__ = ('_dtype','_precision','_index','_start','_stop','_num','_endpoint','_shape', '_rank','_ind')
+    _attribute_nodes = ('_start','_stop')
+    _order     = 'C'
 
+    def __init__(self, start, stop, num=None, endpoint=True, dtype=None):
 
-        _valid_args = (Variable, IndexedElement, LiteralFloat,
-                       LiteralInteger)
+        if not num:
+            num = LiteralInteger(50)
 
-        for arg in (start, stop, size):
-            if not isinstance(arg, _valid_args):
-                raise TypeError('Expecting valid args')
+        if num.rank != 0:
+            raise TypeError('Expecting positive integer num argument.')
+
+        for arg in (start, stop, num):
+            if not isinstance(arg, PyccelAstNode):
+                raise TypeError('Expecting valid args.')
+
+        if dtype:
+            self._dtype, self._precision = dtype_registry[dtype]
+        else:
+            args      = (start, stop)
+            integers  = [e for e in args if e.dtype is NativeInteger()]
+            reals     = [e for e in args if e.dtype is NativeReal()]
+            complexs  = [e for e in args if e.dtype is NativeComplex()]
+
+            if complexs:
+                self._dtype     = NativeComplex()
+                self._precision = max(e.precision for e in complexs)
+            elif reals:
+                self._dtype     = NativeReal()
+                self._precision = max(e.precision for e in reals)
+            elif integers:
+                self._dtype     = NativeReal()
+                self._precision = default_precision['real']
+            else:
+                raise TypeError('cannot determine the type of {}'.format(self))
 
         self._index = Variable('int', 'linspace_index')
         self._start = start
         self._stop  = stop
-        self._size  = size
-        self._shape = (self._size,) + self._start.shape
+        self._num  = num
+        if endpoint is True:
+            self._endpoint = LiteralTrue()
+        elif endpoint is False:
+            self._endpoint = LiteralFalse()
+        else:
+            if not isinstance(endpoint.dtype, NativeBool):
+                raise TypeError('endpoint argument must be boolean')
+            self._endpoint = endpoint
+
+        shape = broadcast(self._start.shape, self._stop.shape)
+        self._shape = (self._num,) + shape
         self._rank  = len(self._shape)
+        self._ind = ''
         super().__init__()
+
+    @property
+    def endpoint(self):
+        """Tells if the stop must be included or not."""
+        return self._endpoint
 
     @property
     def start(self):
@@ -582,22 +633,39 @@ class NumpyLinspace(NumpyNewArray):
         return self._stop
 
     @property
-    def size(self):
-        return self._size
+    def num(self):
+        """Represent the number of generated elements by the linspace function."""
+        return self._num
 
     @property
     def index(self):
         return self._index
 
     @property
-    def step(self):
-        return (self.stop - self.start) / (self.size - 1)
+    def rank(self):
+        return self._rank
 
-    def __str__(self):
-        code = 'linspace({}, {}, {})'.format(str(self.start),
-                                             str(self.stop),
-                                             str(self.size))
-        return code
+    @property
+    def step(self):
+        if isinstance(self.endpoint, LiteralFalse):
+            return PyccelDiv(PyccelMinus(self.stop, self.start), self.num)
+        elif isinstance(self.endpoint, LiteralTrue):
+            PyccelDiv(PyccelMinus(self.stop, self.start), PyccelMinus(self.num, LiteralInteger(1)))
+        return PyccelDiv(PyccelMinus(self.stop, self.start), PyccelMinus(self.num, PythonInt(self.endpoint)))
+
+    @property
+    def ind(self):
+        """Used to store the indice needed for the linspace function."""
+        return self._ind
+
+    @ind.setter
+    def ind(self, value):
+        """Used to set the _ind var."""
+        self._ind = value
+
+    @property
+    def is_elemental(self):
+        return True
 
 #==============================================================================
 class NumpyWhere(PyccelInternalFunction):

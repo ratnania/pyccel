@@ -37,7 +37,7 @@ from pyccel.ast.variable  import (Variable, TupleVariable,
                              InhomogeneousTupleVariable,
                              DottedName, PyccelArraySize)
 
-from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus, PyccelNot
+from pyccel.ast.operators      import PyccelAdd, PyccelMul, PyccelDiv, PyccelMinus, PyccelNot, PyccelEq, PyccelAnd
 from pyccel.ast.operators      import PyccelMod
 
 from pyccel.ast.operators      import PyccelUnarySub, PyccelLt, PyccelGt, IfTernaryOperator
@@ -59,7 +59,7 @@ from pyccel.ast.datatypes import CustomDataType
 from pyccel.ast.internals import Slice
 
 from pyccel.ast.literals  import LiteralInteger, LiteralFloat, Literal
-from pyccel.ast.literals  import LiteralTrue
+from pyccel.ast.literals  import LiteralTrue, LiteralFalse
 from pyccel.ast.literals  import Nil
 
 from pyccel.ast.numpyext import NumpyEmpty
@@ -722,14 +722,41 @@ class FCodePrinter(CodePrinter):
 
     def _print_NumpyLinspace(self, expr):
 
-        template = '[({start} + {index}*{step},{index} = {zero},{end})]'
+        if expr.stop.dtype != expr.dtype:
+            if isinstance(expr.dtype, NativeComplex):
+                st = PythonComplex(expr.stop)
+                v = self._print(st)
+            else:
+                v = 'Real({0}, {1})'.format(self._print(expr.stop), self.print_kind(expr))
+        else:
+            v = self._print(expr.stop)
 
+        if expr.rank > 1:
+            if isinstance(expr.endpoint, LiteralFalse):
+                template = '({start} + {index}*{step})'
+            else:
+                template = '(merge({stop}, ({start} + {index}*{step}), ({cond})))'
+            var = Variable('int', str(expr.ind))
+        else:
+            if isinstance(expr.endpoint, LiteralFalse):
+                template = '[(({start} + {index}*{step}), {index} = {zero},{end})]'
+            else:
+                template = '[(merge({stop}, ({start} + {index}*{step}), ({cond})),{index} = {zero},{end})]'
+            var = Variable('int', 'linspace_index')
+            self.add_vars_to_namespace(var)
+
+        if isinstance(expr.endpoint, LiteralTrue):
+            cond = PyccelEq(var, PyccelMinus(expr.num, LiteralInteger(1), simplify = True))
+        else:
+            cond = PyccelAnd(PyccelEq(var, PyccelMinus(expr.num, LiteralInteger(1), simplify = True)), PyccelEq(expr.endpoint, LiteralTrue()))
         init_value = template.format(
+            stop  = v,
             start = self._print(expr.start),
             step  = self._print(expr.step ),
-            index = self._print(expr.index),
+            index = self._print(var),
+            cond  = self._print(cond),
             zero  = self._print(LiteralInteger(0)),
-            end   = self._print(PyccelMinus(expr.size, LiteralInteger(1), simplify = True)),
+            end   = self._print(PyccelMinus(expr.num, LiteralInteger(1), simplify = True)),
         )
         code = init_value
 

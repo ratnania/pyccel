@@ -359,6 +359,79 @@ In Pyccel we try to support the Numpy functions which developers use the most.. 
     end program prog_test_matmul
     ```
 
+## [linspace](https://numpy.org/doc/stable/reference/generated/numpy.linspace.html)
+
+-   Supported languages: C, fortran
+
+-   Supported parameters:
+
+    start, stop: array_like,
+
+    num: int, optional (Default is 50)
+
+    endpoint: bool, optional (Default is True)
+
+    dtype: dtype, optional
+
+-   python code:
+
+    ```python
+    from numpy import linspace
+
+    x = linspace(0, 10, 20, endpoint=False, dtype='float64')
+    print(x)
+    ```
+
+-   fortran equivalent:
+
+    ```fortran
+    program prog_example
+
+    use, intrinsic :: ISO_C_BINDING
+
+    implicit none
+
+    real(C_DOUBLE), allocatable :: x(:)
+    integer(C_INT64_T) :: linspace_index
+
+    allocate(x(0:19_C_INT64_T))
+    x = [((0_C_INT64_T + linspace_index*Real((10_C_INT64_T - 0_C_INT64_T), &
+      C_DOUBLE) / 20.0_C_DOUBLE), linspace_index = 0_C_INT64_T, &
+      19_C_INT64_T)]
+    print *, x
+
+    end program prog_example
+
+    ```
+
+-   C equivalent:
+
+    ```C
+    #include <stdint.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include "ndarrays.h"
+    int main()
+    {
+        t_ndarray x;
+        int64_t i_0001;
+        int64_t i;
+        x = array_create(1, (int64_t[]){20}, nd_double);
+        for (i_0001 = 0; i_0001 < 20; i_0001 += 1)
+        {
+            x.nd_double[get_index(x, i_0001)] = (0 + i_0001*(double)((10 - 0)) / 20.0);
+        }
+        printf("%s", "[");
+        for (i = 0; i < 19; i += 1)
+        {
+            printf("%.12lf ", x.nd_double[get_index(x, i)]);
+        }
+        printf("%.12lf]\n", x.nd_double[get_index(x, 19)]);
+        free_array(x);
+        return 0;
+    }
+    ```
+
 ## Other functions
 
 -   Supported [math functions](https://numpy.org/doc/stable/reference/routines.math.html) (optional parameters are not supported):
