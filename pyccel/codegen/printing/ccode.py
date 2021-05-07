@@ -620,18 +620,19 @@ class CCodePrinter(CodePrinter):
 
     def _print_PyccelMod(self, expr):
         self._additional_imports.add("math")
+        self._additional_imports.add("pyc_math")
 
         first = self._print(expr.args[0])
         second = self._print(expr.args[1])
 
         if expr.dtype is NativeInteger():
-            return "{} % {}".format(first, second)
+            return "MOD_PYC3({n}, {base})".format(n=first, base=second)
 
         if expr.args[0].dtype is NativeInteger():
             first = self._print(NumpyFloat(expr.args[0]))
         if expr.args[1].dtype is NativeInteger():
             second = self._print(NumpyFloat(expr.args[1]))
-        return "fmod({}, {})".format(first, second)
+        return "FMOD_PYC3({n}, {base})".format(n=first, base=second)
 
     def _print_PyccelPow(self, expr):
         b = expr.args[0]
