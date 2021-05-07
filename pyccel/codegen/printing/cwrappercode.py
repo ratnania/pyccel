@@ -22,20 +22,21 @@ from pyccel.ast.core import create_incremented_string, SeparatorComment
 from pyccel.ast.core import Import
 from pyccel.ast.core import AugAssign
 
-from pyccel.ast.operators import PyccelEq, PyccelNot, PyccelAnd, PyccelNe, PyccelOr, PyccelAssociativeParenthesis, IfTernaryOperator, PyccelIsNot
+from pyccel.ast.operators import PyccelEq, PyccelNot, PyccelAnd, PyccelOr, PyccelAssociativeParenthesis, IfTernaryOperator, PyccelIsNot
 
 from pyccel.ast.datatypes import NativeInteger, NativeBool, NativeComplex, NativeReal, str_dtype, default_precision
 
-from pyccel.ast.cwrapper import PyccelPyObject, PyArg_ParseTupleNode, PyBuildValueNode
-from pyccel.ast.cwrapper import PyArgKeywords, collect_function_registry
-from pyccel.ast.cwrapper import Py_None, flags_registry
-from pyccel.ast.cwrapper import PyErr_SetString, PythonType_Check
-from pyccel.ast.cwrapper import cast_function_registry, Py_DECREF
-from pyccel.ast.cwrapper import PyccelPyArrayObject, NumpyType_Check
-from pyccel.ast.cwrapper import numpy_get_ndims, numpy_get_data, numpy_get_dim
-from pyccel.ast.cwrapper import numpy_get_type, numpy_dtype_registry
-from pyccel.ast.cwrapper import numpy_check_flag, numpy_flag_c_contig, numpy_flag_f_contig
-from pyccel.ast.cwrapper import PyArray_CheckScalar, PyArray_ScalarAsCtype
+from pyccel.ast.cwrapper    import PyArg_ParseTupleNode, PyBuildValueNode
+from pyccel.ast.cwrapper    import PyArgKeywords
+from pyccel.ast.cwrapper    import Py_None, Py_DECREF
+from pyccel.ast.cwrapper    import generate_datatype_error, PyErr_SetString
+from pyccel.ast.cwrapper    import scalar_object_check, flags_registry
+from pyccel.ast.cwrapper    import PyccelPyArrayObject, PyccelPyObject
+from pyccel.ast.cwrapper    import C_to_Python, Python_to_C
+
+from pyccel.ast.numpy_wrapper   import array_checker, array_type_check
+from pyccel.ast.numpy_wrapper   import pyarray_to_c_ndarray
+from pyccel.ast.numpy_wrapper   import numpy_get_data, numpy_get_dim
 
 from pyccel.ast.bind_c   import as_static_function_call
 
@@ -69,6 +70,15 @@ class CWrapperCodePrinter(CCodePrinter):
     # --------------------------------------------------------------------
 
     def stored_in_c_pointer(self, a):
+        """
+        Return True if variable is pointer or stored in a pointer
+        Parameters:
+        -----------
+        a      : Variable
+            Variable holding information needed (is_pointer, is_optional)
+        Returns: Boolean
+        --------
+        """
         stored_in_c = CCodePrinter.stored_in_c_pointer(self, a)
         if self._target_language == 'fortran':
             return stored_in_c or (isinstance(a, Variable) and a.rank>0)
@@ -76,6 +86,21 @@ class CWrapperCodePrinter(CCodePrinter):
             return stored_in_c
 
     def get_new_name(self, used_names, requested_name):
+        """
+        Generate a new name, return the requested_name if it's not in
+        used_names set  or generate new one based on the requested_name.
+        The generated name is appended to the used_names set
+
+        Parameters
+        ----------
+        used_names     : set of strings
+            Set of variable and function names to avoid name collisions
+        requested_name : String
+            The desired name
+        Returns
+        ----------
+        name  : String
+        """
         if requested_name not in used_names:
             used_names.add(requested_name)
             return requested_name
@@ -93,6 +118,15 @@ class CWrapperCodePrinter(CCodePrinter):
             return CCodePrinter.function_signature(self, expr)
 
     def get_declare_type(self, expr):
+        """
+        Get the declaration type of a variable
+        Parameters:
+        -----------
+        variable : Variable
+            Variable holding information needed to choose the declaration type
+        Returns: String
+        --------
+        """
         dtype = self._print(expr.dtype)
         prec  = expr.precision
         if self._target_language == 'c' and dtype != "pyarrayobject":
@@ -106,27 +140,42 @@ class CWrapperCodePrinter(CCodePrinter):
             return '{0} '.format(dtype)
 
     def get_new_PyObject(self, name, used_names):
+        """
+        Create new PyccelPyObject Variable with the desired name
+        Parameters:
+        -----------
+        name       : String
+            The desired name
+        used_names : Set of strings
+            Set of variable and function names to avoid name collisions
+
+        Returns: Variable
+        -------
+        """
         return Variable(dtype=PyccelPyObject(),
                         name=self.get_new_name(used_names, name),
                         is_pointer=True)
 
     def find_in_dtype_registry(self, dtype, prec):
+        """
+        Find the corresponding C dtype in the dtype_registry
+        raise PYCCEL_RESTRICTION_TODO if not found
+
+        Parameters:
+        -----------
+        dtype : String
+            expression data type
+
+        prec  : Integer
+            expression precision
+
+        Returns: String
+        --------
+        """
         try :
             return dtype_registry[(dtype, prec)]
         except KeyError:
             return CCodePrinter.find_in_dtype_registry(self, dtype, prec)
-
-    def find_in_numpy_dtype_registry(self, var):
-        """ Find the numpy dtype key for a given variable
-        """
-        dtype = self._print(var.dtype)
-        prec  = var.precision
-        try :
-            return numpy_dtype_registry[(dtype, prec)]
-        except KeyError:
-            errors.report(PYCCEL_RESTRICTION_TODO,
-                    symbol = "{}[kind = {}]".format(dtype, prec),
-                    severity='fatal')
 
     def get_default_assign(self, arg, func_arg):
         if arg.rank > 0 :
@@ -172,16 +221,10 @@ class CWrapperCodePrinter(CCodePrinter):
     def _get_check_type_statement(self, variable, collect_var):
 
         if variable.rank > 0 :
-            numpy_dtype = self.find_in_numpy_dtype_registry(variable)
-            check = PyccelEq(FunctionCall(numpy_get_type, [collect_var]), numpy_dtype)
+            check = array_type_check(collect_var, variable)
 
         else :
-            python_check = PythonType_Check(variable, collect_var)
-            numpy_check = NumpyType_Check(variable, collect_var)
-            if variable.precision == default_precision[str_dtype(variable.dtype)] :
-                check = PyccelOr(python_check, numpy_check)
-            else :
-                check = PyccelAssociativeParenthesis(PyccelAnd(PyccelNot(python_check), numpy_check))
+            check = scalar_object_check(collect_var, variable, precision_check = True)
 
         if isinstance(variable, ValuedVariable):
             default = PyccelNot(VariableAddress(collect_var)) if variable.rank > 0 else PyccelEq(VariableAddress(collect_var), VariableAddress(Py_None))
@@ -211,156 +254,6 @@ class CWrapperCodePrinter(CCodePrinter):
 
         return wrapper_name
 
-    # --------------------------------------------------------------------
-    # Functions that take care of creating cast or convert type function call
-    # --------------------------------------------------------------------
-    def get_collect_function_call(self, variable, collect_var):
-        """
-        Represents a call to cast function responsible for collecting value from python object.
-
-        Parameters:
-        ----------
-        variable: variable
-            the variable needed to collect
-        collect_var :
-            the pyobject variable
-        """
-        if variable.rank > 0 :
-            if self._target_language == 'c':
-                return self.get_cast_function_call('pyarray_to_ndarray', collect_var)
-            return FunctionCall(numpy_get_data,[collect_var])
-        if isinstance(variable.dtype, NativeComplex):
-            return self.get_cast_function_call('pycomplex_to_complex', collect_var)
-
-        if isinstance(variable.dtype, NativeBool):
-            return self.get_cast_function_call('pybool_to_bool', collect_var)
-        try :
-            collect_function = collect_function_registry[variable.dtype]
-        except KeyError:
-            errors.report(PYCCEL_RESTRICTION_TODO, symbol=variable.dtype,severity='fatal')
-        return FunctionCall(collect_function, [collect_var])
-
-
-    def get_cast_function_call(self, cast_type, arg):
-        """
-        Represents a call to cast function responsible for the conversion of one data type into another.
-
-        Parameters:
-        ----------
-        cast_type: string
-            The type of cast function on format 'data type_to_data type'
-        arg: variable
-            the variable needed to cast
-        """
-
-        if cast_type in self._cast_functions_dict:
-            cast_function = self._cast_functions_dict[cast_type]
-
-        else:
-            cast_function_name = self.get_new_name(self._global_names, cast_type)
-
-            try:
-                cast_function = cast_function_registry[cast_type](cast_function_name)
-            except KeyError as e:
-                raise NotImplementedError("No conversion function : {}".format(cast_type)) from e
-
-            self._cast_functions_dict[cast_type] = cast_function
-
-        return FunctionCall(cast_function, [arg])
-
-    # --------------------------------------------------------------------
-    # Functions that take care of collecting (data type, rank) checks and creating the error code
-    # --------------------------------------------------------------------
-    def _generate_TypeError_message(self, variable):
-        """
-        Generate TypeError message from the variable information (datatype, precision)
-        """
-        dtype     = variable.dtype
-
-        if isinstance(dtype, NativeBool):
-            precision = ''
-        if isinstance(dtype, NativeComplex):
-            precision = '{} bit '.format(variable.precision * 2 * 8)
-        else:
-            precision = '{} bit '.format(variable.precision * 8)
-
-        message = '"{var_name} must be {precision}{dtype}"'.format(
-                        var_name  = variable,
-                        precision = precision,
-                        dtype     = self._print(variable.dtype))
-        return message
-
-    def _get_array_type_check(self, variable, collect_var):
-        """
-        Responsible for collecting array type check and creating the
-        corresponding error code
-
-        Parameters:
-        ----------
-        variable     : Variable
-            The optional variable
-        collect_var  : Variable
-            variable which holds the value collected with PyArg_Parsetuple
-
-        Returns:
-        -------
-        check : FunctionCall
-            functionCall responsible for checking the data type
-        error : FunctionCall
-            function call that raise TypeError
-        """
-
-        numpy_dtype = self.find_in_numpy_dtype_registry(variable)
-        arg_dtype   = self.find_in_dtype_registry(self._print(variable.dtype), variable.precision)
-
-        check = PyccelNe(FunctionCall(numpy_get_type, [collect_var]), numpy_dtype)
-        error = PyErr_SetString('PyExc_TypeError', '"{} must be {}"'.format(variable, arg_dtype))
-
-        return check, error
-
-    def _get_scalar_type_check(self, variable, collect_var, error_check = False):
-        """
-        Responsible for collecting numpy and python type check and creating the
-        corresponding error code
-
-        Parameters:
-        ----------
-        variable     : Variable
-            The optional variable
-        collect_var  : Variable
-            variable which holds the value collected with PyArg_Parsetuple
-        error_check  : Bool
-            True if checking the data type and raising error is needed
-
-        Returns:
-        -------
-        numpy_type_check : FunctionCall or None
-            functionCall responsible for checking numpy data type
-
-        python_type_check : FunctionCall | LiteralTrue | None
-            functionCall responsible for checking python data type
-            LiteralTrue when error_check is False
-            None when default system precision is different than the variable precision
-
-        error : FunctionCall or None
-            function call that raise TypeError
-            None when error_check is False
-        """
-
-        if not error_check :
-            scalar_check =  FunctionCall(PyArray_CheckScalar, [collect_var])
-            return scalar_check, LiteralTrue(), None
-
-        numpy_type_check  = NumpyType_Check(variable, collect_var)
-        python_type_check = None
-
-        #When the variable precision is equal to default system precision a python type check is needed
-        if variable.precision == default_precision[str_dtype(variable.dtype)] :
-            python_type_check = PythonType_Check(variable, collect_var)
-
-        error = PyErr_SetString('PyExc_TypeError', self._generate_TypeError_message(variable))
-
-        return numpy_type_check, python_type_check, error
 
     # -------------------------------------------------------------------
     # Functions managing  the creation of wrapper body
@@ -406,12 +299,7 @@ class CWrapperCodePrinter(CCodePrinter):
         """
         Responsible for collecting value and managing error and create the body
         of arguments in format:
-            if collect_var is numpy_type:
-                collect_value from numpy type
-            elif collect_var is python_type: #When needed
-                collect value from python type
-            else
-                raise an error
+
         Parameters:
         ----------
         variable    : Variable
@@ -431,23 +319,21 @@ class CWrapperCodePrinter(CCodePrinter):
         var      = tmp_variable if tmp_variable else variable
         sections = []
 
-        numpy_check, python_check, error = self._get_scalar_type_check(variable, collect_var, error_check)
-
-        python_collect  = [Assign(var, self.get_collect_function_call(variable, collect_var))]
-        numpy_collect   = [FunctionCall(PyArray_ScalarAsCtype, [collect_var, var])]
+        collect_value = [Assign(var, FunctionCall(Python_to_C(var), [collect_var]))]
 
         if isinstance(variable, ValuedVariable):
             section, optional_collect = self._valued_variable_management(variable, collect_var, tmp_variable)
             sections.append(section)
-            python_collect += optional_collect
-            numpy_collect  += optional_collect
-
-        sections.append(IfSection(numpy_check, numpy_collect))
-        if python_check:
-            sections.append(IfSection(python_check, python_collect))
+            collect_value += optional_collect
 
         if error_check:
+            check_type = scalar_object_check(collect_var, var, precision_check = False)
+            sections.append(IfSection(check_type, collect_value))
+            error = generate_datatype_error(var)
             sections.append(IfSection(LiteralTrue(), [error, Return([Nil()])]))
+        else:
+            sections.append(IfSection(LiteralTrue(), collect_value))
+
 
         return If(*sections)
 
@@ -455,18 +341,6 @@ class CWrapperCodePrinter(CCodePrinter):
         """
         Responsible for collecting value and managing error and create the body
         of arguments with rank greater than 0 in format
-                if (rank check == False){
-                    print TypeError Wrong rank
-                    return Null
-                }else if(Type Check == False){
-                    Print TypeError Wrong type
-                    return Null
-                }else if (order check == False){ #check for order for rank > 1
-                    Print NotImplementedError Wrong Order
-                    return Null
-                }
-                collect the value from PyArrayObject
-
         Parameters:
         ----------
         Variable : Variable
@@ -482,31 +356,20 @@ class CWrapperCodePrinter(CCodePrinter):
             A list of statements
         """
         body = []
-        #TODO create and extern rank and order check function
         #check optional :
         if variable.is_optional :
             check = PyccelNot(VariableAddress(collect_var))
             body += [IfSection(check, [Assign(VariableAddress(variable), Nil())])]
 
-        #rank check :
-        check = PyccelNe(FunctionCall(numpy_get_ndims,[collect_var]), LiteralInteger(collect_var.rank))
-        error = PyErr_SetString('PyExc_TypeError', '"{} must have rank {}"'.format(collect_var, str(collect_var.rank)))
-        body  += [IfSection(check, [error, Return([Nil()])])]
-        if check_type : #Type check
-            check, error = self._get_array_type_check(variable, collect_var)
-            body += [IfSection(check, [error, Return([Nil()])])]
+        check = array_checker(collect_var, variable, check_type, self._target_language)
+        body += [IfSection(check, [Return([Nil()])])]
 
-        if collect_var.rank > 1 and self._target_language == 'fortran' :#Order check
-            if collect_var.order == 'F':
-                check = FunctionCall(numpy_check_flag,[collect_var, numpy_flag_f_contig])
-            else:
-                check = FunctionCall(numpy_check_flag,[collect_var, numpy_flag_c_contig])
-                error = PyErr_SetString('PyExc_NotImplementedError',
-                        '"Argument does not have the expected ordering ({})"'.format(collect_var.order))
-                body += [IfSection(PyccelNot(check), [error, Return([Nil()])])]
-
+        if self._target_language == 'fortran':
+            collect_func = FunctionCall(numpy_get_data, [collect_var])
+        else:
+            collect_func = FunctionCall(pyarray_to_c_ndarray, [collect_var])
         body += [IfSection(LiteralTrue(), [Assign(VariableAddress(variable),
-                            self.get_collect_function_call(variable, collect_var))])]
+                            collect_func)])]
         body = [If(*body)]
 
         return body
@@ -603,21 +466,13 @@ class CWrapperCodePrinter(CCodePrinter):
         cast_func_stmts : functionCall
             call to cast function responsible for the conversion of one data type into another
         """
-        collect_var = variable
-        cast_function = None
 
-        if variable.dtype is NativeBool():
-            collect_type = PyccelPyObject()
-            collect_var = Variable(dtype=collect_type, is_pointer=True,
-                name = self.get_new_name(used_names, variable.name+"_tmp"))
-            cast_function = self.get_cast_function_call('bool_to_pyobj', variable)
+        cast_function = FunctionCall(C_to_Python(variable), [VariableAddress(variable)])
 
-        if variable.dtype is NativeComplex():
-            collect_type = PyccelPyObject()
-            collect_var = Variable(dtype=collect_type, is_pointer=True,
-                name = self.get_new_name(used_names, variable.name+"_tmp"))
-            cast_function = self.get_cast_function_call('complex_to_pycomplex', variable)
-            self._to_free_PyObject_list.append(collect_var)
+        collect_type = PyccelPyObject()
+        collect_var = Variable(dtype=collect_type, is_pointer=True,
+            name = self.get_new_name(used_names, variable.name+"_tmp"))
+        self._to_free_PyObject_list.append(collect_var) #TODO remove in next PR
 
         return collect_var, cast_function
 
@@ -1044,18 +899,11 @@ class CWrapperCodePrinter(CCodePrinter):
 
         # Print imports last to be sure that all additional_imports have been collected
         imports  = [Import(s) for s in self._additional_imports]
-        imports += [Import('Python')]
         imports += [Import('numpy/arrayobject')]
+        imports += [Import('cwrapper')]
         imports  = ''.join(self._print(i) for i in imports)
 
-        numpy_max_acceptable_version = [1, 19]
-        numpy_current_version = [int(v) for v in np.version.version.split('.')[:2]]
-        numpy_api_macro = '#define NPY_NO_DEPRECATED_API NPY_{}_{}_API_VERSION\n'.format(
-                min(numpy_max_acceptable_version[0], numpy_current_version[0]),
-                min(numpy_max_acceptable_version[1], numpy_current_version[1]))
-
-        return ('#define PY_SSIZE_T_CLEAN\n'
-                '{numpy_api_macro}'
+        return ('#define PY_ARRAY_UNIQUE_SYMBOL CWRAPPER_ARRAY_API\n'
                 '{imports}\n'
                 '{function_signatures}\n'
                 '{sep}\n'
@@ -1067,7 +915,6 @@ class CWrapperCodePrinter(CCodePrinter):
                 '{module_def}\n'
                 '{sep}\n'
                 '{init_func}'.format(
-                    numpy_api_macro = numpy_api_macro,
                     imports = imports,
                     function_signatures = function_signatures,
                     sep = sep,

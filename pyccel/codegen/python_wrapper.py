@@ -9,6 +9,7 @@ import subprocess
 import os
 import glob
 import warnings
+import shutil
 from filelock import FileLock
 
 from pyccel.ast.bind_c                      import as_static_module
@@ -17,6 +18,8 @@ from pyccel.codegen.printing.fcode          import fcode
 from pyccel.codegen.printing.cwrappercode   import cwrappercode
 from pyccel.codegen.utilities               import compile_files, get_gfortran_library_dir
 from .cwrapper import create_c_setup
+
+import pyccel.stdlib as stdlib_folder
 
 from pyccel.errors.errors import Errors
 
@@ -44,6 +47,24 @@ def create_shared_library(codegen,
                           flags = '',
                           sharedlib_modname=None,
                           verbose = False):
+    # get path to pyccel/stdlib/lib_name
+    stdlib_path = os.path.dirname(stdlib_folder.__file__)
+    # get the library folder name
+    lib_name = 'cwrapper'
+    # get lib path (stdlib_path/lib_name)
+    lib_path = os.path.join(stdlib_path, lib_name)
+
+    # remove library folder to avoid missing files and copy
+    # new one from pyccel stdlib
+    lib_dest_path = os.path.join(pyccel_dirpath, lib_name)
+    with FileLock(lib_dest_path + '.lock'):
+        if not os.path.exists(lib_dest_path):
+            try:
+                shutil.copytree(lib_path, lib_dest_path)
+            except:
+                print('[Error : copy folder {}]'.format(lib_path))
+
+    includes.append(lib_dest_path)
 
     # Consistency checks
     if not codegen.is_module:
@@ -132,7 +153,7 @@ def create_shared_library(codegen,
 
         if verbose:
             print(' '.join(cmd))
-        locks = [FileLock(d+'.lock') for d in dep_mods]
+        locks = [FileLock(d+'.lock') for d in [*dep_mods, 'cwrapper']]
         for l in locks:
             l.acquire()
         try:

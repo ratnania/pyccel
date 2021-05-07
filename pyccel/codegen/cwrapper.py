@@ -6,6 +6,7 @@
 uses python setuptools to compile a c file and generate the
 corresponding shared library file"""
 from numpy import get_include as get_numpy_include
+from pyccel.ast.numpy_wrapper      import get_numpy_max_acceptable_version
 
 def print_list(l):
     """ Convert a list of strings to a string that contains the
@@ -59,7 +60,7 @@ def create_c_setup(mod_name,
     else:
         code += "\n"
 
-    wrapper_file = "[ r'{0}' ]".format(wrapper_file)
+    wrapper_file = "[ r'{0}' , r'cwrapper/cwrapper.c']".format(wrapper_file) #TODO find another way
 
     deps  = ['{0}.o'.format(d) for d in dependencies]
 
@@ -87,7 +88,13 @@ def create_c_setup(mod_name,
     linker_flags_str   = ('extra_link_args = {0}'.format(print_list(linker_flags))
                    if flags else None)
 
-    args = [mod, wrapper_file, files, include_str, libs_str, libdirs_str, flags_str, linker_flags_str]
+    macros = [get_numpy_max_acceptable_version()]
+    if any(ext_lib.endswith('ndarrays') for ext_lib in include):
+        macros.append('(r\'NDARRAYS\',  None)')
+    define_macros = ('define_macros = [{0}]').format(', '.join(macros))
+
+    args = [mod, wrapper_file, files, include_str, libs_str, libdirs_str,
+                flags_str, linker_flags_str, define_macros]
     args = ',\n\t\t'.join(a for a in args if a is not None)
 
     code += "extension_mod = Extension({args})\n\n".format(args=args)
