@@ -20,6 +20,13 @@ def language(request):
 
 #==============================================================================
 
+def test_directive_in_else(language):
+    f1 = epyccel(openmp.directive_in_else, accelerator='openmp', language=language)
+    assert f1(0)  == 0
+    assert f1(15) == 15
+    assert f1(32) == 496
+    assert f1(40) == 780
+
 def test_module_1(language):
     f1 = epyccel(openmp.f1, accelerator='openmp', language=language)
     set_num_threads = epyccel(openmp.set_num_threads, accelerator='openmp', language=language)

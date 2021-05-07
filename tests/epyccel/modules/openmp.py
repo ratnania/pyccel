@@ -34,6 +34,19 @@ def f1(i):
     #$ omp end parallel
     return out
 
+def directive_in_else(x : int):
+    result = 0
+    if x < 30:
+        return x
+    else:
+        #$ omp parallel
+        #$ omp for reduction(+:result)
+        for i in range(x):
+            result = result + i
+        #$ omp end parallel
+
+    return result
+
 def test_omp_number_of_procs():
     from pyccel.stdlib.internal.openmp import omp_get_num_procs
     procs_num = omp_get_num_procs()
