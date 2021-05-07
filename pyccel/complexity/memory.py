@@ -3,6 +3,7 @@
 # This file is part of Pyccel which is released under MIT License. See the LICENSE file or #
 # go to https://github.com/pyccel/pyccel/blob/master/LICENSE for full license details.     #
 #------------------------------------------------------------------------------------------#
+# pylint: disable=R0201, missing-function-docstring
 
 """
 This module provides us with functions and objects that allow us to compute
@@ -10,108 +11,29 @@ the memory complexity a of a program.
 
 Example
 -------
-
->>> code = '''
-... n = 10
-... for i in range(0,n):
-...     for j in range(0,n):
-...         x = pow(i,2) + pow(i,3) + 3*i
-...         y = x / 3 + 2* x
-... '''
-
->>> from pyccel.complexity.memory import MemComplexity
->>> M = MemComplexity(code)
->>> d = M.cost()
->>> print "f = ", d['f']
-f =  n**2*(2*ADD + DIV + 2*MUL + 2*POW)
->>> print "m = ", d['m']
-m =  WRITE + 2*n**2*(READ + WRITE)
->>> q = M.intensity()
->>> print "+++ computational intensity ~", q
-+++ computational intensity ~ (2*ADD + DIV + 2*MUL + 2*POW)/(2*READ + 2*WRITE)
-
 """
 
 from sympy import sympify, Symbol
-from sympy import Poly, LT
+from sympy import summation
 
 from pyccel.ast.basic        import Basic
 from pyccel.ast.builtins     import PythonTuple
 from pyccel.ast.core         import For, Assign, CodeBlock, FunctionDef
 from pyccel.ast.internals    import PyccelSymbol
+from pyccel.ast.internals    import Slice
+from pyccel.ast.literals     import Literal
 from pyccel.ast.numpyext     import NumpyZeros, NumpyOnes
 from pyccel.ast.sympy_helper import pyccel_to_sympy
 from pyccel.complexity.basic import Complexity
+from pyccel.complexity.basic import SHAPE
 
 
-__all__ = ["count_access", "MemComplexity"]
+__all__ = ["MemComplexity"]
 
-# ...
-def count_access(expr, visual=True):
-    """
-    returns the number of access to memory in terms of WRITE and READ.
+WRITE = Symbol('WRITE')
+READ  = Symbol('READ')
 
-    expr: sympy.Expr
-        any sympy expression or pyccel.ast.core object
-    visual: bool
-        If ``visual`` is ``True`` then the number of each type of operation is shown
-        with the core class types (or their virtual equivalent) multiplied by the
-        number of times they occur.
-    local_vars: list
-        list of variables that are supposed to be in the fast memory. We will
-        ignore their corresponding memory accesses.
-    """
-
-    WRITE = Symbol('WRITE')
-    READ  = Symbol('READ')
-
-    symbol_map = {}
-    used_names = set()
-
-    if isinstance(expr, Assign):
-        return count_access(expr.rhs, visual) + WRITE
-
-    elif isinstance(expr, PythonTuple):
-        return sum(count_access(i, visual) for i in expr)
-
-    elif isinstance(expr, CodeBlock):
-        return sum(count_access(i, visual) for i in expr.body)
-
-    elif isinstance(expr, For):
-        s = pyccel_to_sympy(expr.iterable, symbol_map, used_names).size
-        ops = sum(count_access(i, visual) for i in expr.body.body)
-        return ops*s
-
-    elif isinstance(expr, (NumpyZeros, NumpyOnes)):
-        import numpy as np
-        return WRITE*np.prod(expr.shape)
-
-    elif isinstance(expr, Basic):
-
-        atoms = expr.get_attribute_nodes(PyccelSymbol, FunctionDef)
-        return READ*len(atoms)
-
-    else:
-        raise NotImplementedError('TODO count_access for {}'.format(type(expr)))
-
-
-
-def leading_term(expr, *args):
-    """
-    Returns the leading term in a sympy Polynomial.
-
-    expr: sympy.Expr
-        any sympy expression
-
-    args: list
-        list of input symbols for univariate/multivariate polynomials
-    """
-    expr = sympify(str(expr))
-    P = Poly(expr, *args)
-    return LT(P)
-# ...
-
-# ...
+# ==============================================================================
 class MemComplexity(Complexity):
     """
     Class for memory complexity computation.
@@ -119,119 +41,160 @@ class MemComplexity(Complexity):
 
     Example
 
-    >>> code = '''
-    ... n = 10
-    ... for i in range(0,n):
-    ...     for j in range(0,n):
-    ...         x = pow(i,2) + pow(i,3) + 3*i
-    ...         y = x / 3 + 2* x
-    ... '''
-
-    >>> from pyccel.complexity.memory import MemComplexity
-    >>> M = MemComplexity(code)
-    >>> d = M.cost()
-    >>> print "f = ", d['f']
-    f =  n**2*(2*ADD + DIV + 2*MUL + 2*POW)
-    >>> print "m = ", d['m']
-    m =  WRITE + 2*n**2*(READ + WRITE)
-    >>> q = M.intensity()
-    >>> print "+++ computational intensity ~", q
-    +++ computational intensity ~ (2*ADD + DIV + 2*MUL + 2*POW)/(2*READ + 2*WRITE)
-
-    Now let us consider a case where some variables are supposed to be in the
-    fast memory, (*r* in this test)
-
-    >>> code = '''
-    ... n = 10
-    ... x = zeros(shape=(n,n), dtype=float)
-    ... r = float()
-    ... r = 0
-    ... for i in range(0, n):
-    ...     r = x[n,i] + 1
-    ... '''
-
-    >>> M = MemComplexity(code)
-    >>> d = M.cost()
-    >>> print "f = ", d['f']
-    f =  ADD*n
-    >>> print "m = ", d['m']
-    m =  2*WRITE + n*(READ + WRITE)
-    >>> q = M.intensity()
-    >>> print "+++ computational intensity ~", q
-    +++ computational intensity ~ ADD/(READ + WRITE)
-
-    Notice, that this is not what we expect! the cost of writing into *r* is
-    'zero', and therefor, there should be no :math:`n*WRITE` in our memory cost.
-    In order to achieve this, you must tell pyccel that you have the variable
-    *r* is already in the fast memory. This can be done by adding the argument
-    *local_vars=['r']* when calling the cost method.
-
-    >>> d = M.cost(local_vars=['r'])
-    >>> print "f = ", d['f']
-    f =  ADD*n
-    >>> print "m = ", d['m']
-    m =  READ*n + WRITE
-    >>> q = M.intensity(local_vars=['r'])
-    >>> print "+++ computational intensity ~", q
-    +++ computational intensity ~ ADD/READ
-
-    and this is exactly what we were expecting.
     """
-    def cost(self):
-        """
-        Computes the complexity of the given code.
 
-        local_vars: list
-            list of variables that are supposed to be in the fast memory. We will
-            ignore their corresponding memory accesses.
-        """
+    def _cost_Assign(self, expr, **settings):
+        # TODO add other numpy array constructors
+        if isinstance(expr.rhs, (NumpyZeros, NumpyOnes)):
+            shape = [pyccel_to_sympy(i, self._symbol_map, self._used_names) for i in expr.rhs.shape]
+            size = 1
+            for i in shape:
+                size *= i
 
-        return count_access(self.ast, visual=True)
+            self._shapes[expr.lhs] = shape
 
-    def intensity(self, d=None, args=None, local_vars=[], verbose=False):
-        """
-        Returns the computational intensity for the two level memory model.
+            return size * WRITE
 
-        d: dict
-            dictionary containing the floating and memory costs. if not given,
-            we will compute them.
-        args: list
-            list of free parameters, i.e. degrees of freedom.
-        local_vars: list
-            list of variables that are supposed to be in the fast memory. We will
-            ignore their corresponding memory accesses.
-        verbose: bool
-            talk more
-        """
-        # ...
-        if d is None:
-            d = self.cost(local_vars=local_vars)
-        # ...
+        ntimes = self._compute_size_lhs(expr)
+        return  ntimes * ( self._cost( expr.rhs , **settings ) + WRITE )
 
-        # ...
-        if args is None:
-            args = self.free_parameters
-        # ...
+    def _cost_AugAssign(self, expr, **settings):
+        ntimes = self._compute_size_lhs(expr)
+        # Right? Because x += a should also READ x which is in lrs
+        return  ntimes * (self._cost(expr.rhs, **settings) + WRITE + READ)
 
-        # ...
-        f = d['f']
-        m = d['m']
-        # ...
+    def _cost_PyccelOperator(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
 
-        # ...
-        lt_f = leading_term(f, *args)
-        lt_m = leading_term(m, *args)
+    def _cost_PyccelAdd(self, expr, **settings): # delete
+        return sum(self._cost(i, **settings) for i in expr.args)
 
-        q = lt_f/lt_m
-        # ...
+    def _cost_PyccelMinus(self, expr, **settings):# delete
+        return sum(self._cost(i, **settings) for i in expr.args)
 
-        # ...
-        if verbose:
-            print((" arithmetic cost         ~ " + str(f)))
-            print((" memory cost             ~ " + str(m)))
-            print((" computational intensity ~ " + str(q)))
-        # ...
+    def _cost_PyccelDiv(self, expr, **settings):# delete
+        return sum(self._cost(i, **settings) for i in expr.args)
 
-        return q
+    def _cost_PyccelFloorDiv(self, expr, **settings):# delete
+        #atoms = expr.get_attribute_nodes(PyccelSymbol, FunctionDef)
+        #return READ*len(atoms)
+        return sum(self._cost(i, **settings) for i in expr.args)
 
+    def _cost_PyccelMul(self, expr, **settings):# delete
+        return sum(self._cost(i, **settings) for i in expr.args)
 
+    def _cost_PyccelPow(self, expr, **settings):# delete
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_PythonAbs(self, expr, **settings):# delete
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_Variable(self, expr, **settings):
+        return READ
+
+    def _cost_PyccelSymbol(self, expr, **settings):
+        return READ
+
+    def _cost_IndexedElement(self, expr, **settings):
+
+        ntimes = 1
+        indices = [(e,i) for e,i in enumerate(expr.indices) if isinstance(i, Slice)]
+        for e,i in indices:
+            # ...
+            start = 0
+            if not i.start is None:
+                if isinstance(i.start, Literal):
+                    start = i.start.python_value
+                else:
+                    start = pyccel_to_sympy(i.start, self._symbol_map, self._used_names)
+            # ...
+
+            # ...
+            stop = SHAPE(pyccel_to_sympy(expr.base, self._symbol_map, self._used_names), e)
+            if not i.stop is None:
+                if isinstance(i.stop, Literal):
+                    stop = i.stop.python_value
+                else:
+                    stop = pyccel_to_sympy(i.stop, self._symbol_map, self._used_names)
+            # ...
+
+            # ...
+            step = 1
+            if not i.step == None:
+                if isinstance(i.step, Literal):
+                    step = i.step.python_value
+                else:
+                    step = pyccel_to_sympy(i.step, self._symbol_map, self._used_names)
+            # ...
+
+            if not(step == 1):
+                raise NotImplementedError('only step == 1 is treated')
+
+            # TODO uncomment this
+            #      this was commented because we get floor(...)
+            ntimes *= (stop - start) #// step
+
+        return ntimes * READ
+
+    def _cost_Allocate(self, expr, **settings):
+        # TODO
+        return 0
+
+    def _cost_Deallocate(self, expr, **settings):
+        # TODO
+        return 0
+
+    def _cost_NumpyFloor(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyExp(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyLog(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpySqrt(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpySin(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyCos(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyTan(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArcsin(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArccos(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArctan(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArctan2(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpySinh(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyCosh(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyTanh(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArcsinh(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArccosh(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_NumpyArctanh(self, expr, **settings):
+        return sum(self._cost(i, **settings) for i in expr.args)
+
+    def _cost_PyccelArraySize(self, expr, **settings):
+        # x = size(z) has a READ right?
+        return READ

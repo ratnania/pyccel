@@ -110,6 +110,9 @@ class LiteralInteger(Literal):
     def __index__(self):
         return self.python_value
 
+    def __int__(self):
+        return self.python_value
+
 #------------------------------------------------------------------------------
 class LiteralFloat(Literal):
     """Represents a float literal in python"""
