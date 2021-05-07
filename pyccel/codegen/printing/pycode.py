@@ -59,7 +59,7 @@ class PythonCodePrinter(CodePrinter):
             return lines
         else:
             # lines ends with \n
-            return tab+lines[:-1].replace('\n','\n'+tab)+'\n'
+            return tab+lines.strip('\n').replace('\n','\n'+tab)+'\n'
 
     def _format_code(self, lines):
         return lines
@@ -279,7 +279,7 @@ class PythonCodePrinter(CodePrinter):
         return '({}).imag'.format(self._print(expr.internal_var))
 
     def _print_PythonPrint(self, expr):
-        return 'print({})'.format(', '.join(self._print(a) for a in expr.expr))
+        return 'print({})\n'.format(', '.join(self._print(a) for a in expr.expr))
 
     def _print_PyccelArraySize(self, expr):
         arg = self._print(expr.arg)
@@ -703,6 +703,24 @@ class PythonCodePrinter(CodePrinter):
 
     def _print_PyccelSymbol(self, expr):
         return expr
+
+    #------------------OmpAnnotatedComment Printer------------------
+
+    def _print_OmpAnnotatedComment(self, expr):
+        clauses = ''
+        if expr.combined:
+            clauses = ' ' + expr.combined
+
+        omp_expr = '#$omp {}'.format(expr.name)
+        clauses += str(expr.txt)
+        omp_expr = '{}{}\n'.format(omp_expr, clauses)
+
+        return omp_expr
+
+    def _print_Omp_End_Clause(self, expr):
+        omp_expr = str(expr.txt)
+        omp_expr = '#$omp {}\n'.format(omp_expr)
+        return omp_expr
 
 #==============================================================================
 def pycode(expr, assign_to=None, **settings):

@@ -12,7 +12,10 @@ from pyccel.epyccel import epyccel
 
 @pytest.fixture(params=[
     pytest.param('fortran', marks = pytest.mark.fortran),
-    pytest.param('c'      , marks = pytest.mark.c)
+    pytest.param('c'      , marks = pytest.mark.c),
+    pytest.param("python", marks = [
+    pytest.mark.skip(reason="OpenMP Routines can't run in python, https://github.com/pyccel/pyccel/issues/855"),
+    pytest.mark.python])
     ]
 )
 def language(request):
@@ -315,6 +318,14 @@ def test_omp_master(language):
     f1 = epyccel(openmp.omp_master, accelerator='openmp', language=language)
     assert f1() == openmp.omp_master()
 
+@pytest.mark.parametrize( 'language', [
+            pytest.param("python", marks = [
+            pytest.mark.xfail(reason="This test depend on thread for the result we, so in python we get different result because we don't use threads."),
+            pytest.mark.python]),
+            pytest.param("fortran", marks = pytest.mark.fortran),
+            pytest.param("c", marks = pytest.mark.c)
+    ]
+)
 def test_omp_taskloop(language):
     f1 = epyccel(openmp.omp_taskloop, accelerator='openmp', language=language)
     from numpy import random
@@ -327,7 +338,7 @@ def test_omp_taskloop(language):
         assert result == f1(x)
 
 @pytest.mark.parametrize( 'language', [
-        pytest.param("c", marks = [
+            pytest.param("c", marks = [
             pytest.mark.xfail(reason="Nested functions not handled for C !"),
             pytest.mark.c]),
             pytest.param("fortran", marks = pytest.mark.fortran)

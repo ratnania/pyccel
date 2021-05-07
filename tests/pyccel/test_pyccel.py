@@ -13,7 +13,8 @@ import numpy as np
 
 @pytest.fixture( params=[
         pytest.param("fortran", marks = pytest.mark.fortran),
-        pytest.param("c", marks = pytest.mark.c)
+        pytest.param("c", marks = pytest.mark.c),
+        pytest.param("python", marks = pytest.mark.python)
     ],
     scope='module'
 )
@@ -27,17 +28,28 @@ def get_abs_path(relative_path):
     return os.path.join(base_dir, relative_path)
 
 #------------------------------------------------------------------------------
-def get_exe(filename):
+def get_exe(filename, language=None):
     exefile = os.path.splitext(filename)[0]
-    if sys.platform == "win32":
-        exefile = exefile + ".exe"
-    if not os.path.isfile(exefile):
-        dirname = os.path.dirname(filename)
-        basename = "prog_"+os.path.basename(filename)
-        exefile = os.path.join(dirname, os.path.splitext(basename)[0])
+
+    if language == 'python':
+        exefile = os.path.normpath(filename)
+        base = os.path.basename(exefile)
+        dir_path = os.path.dirname(exefile)
+        if os.path.isfile(os.path.join(dir_path, 'py', "prog_"+base)):
+            base = "prog_"+base
+        exefile  = os.path.join(dir_path, 'py', base)
+        exefile  = os.path.normpath(exefile)
+    else:
         if sys.platform == "win32":
             exefile = exefile + ".exe"
-        assert(os.path.isfile(exefile))
+        if not os.path.isfile(exefile):
+            dirname = os.path.dirname(filename)
+            basename = "prog_"+os.path.basename(filename)
+            exefile = os.path.join(dirname, os.path.splitext(basename)[0])
+            if sys.platform == "win32":
+                exefile = exefile + ".exe"
+            assert(os.path.isfile(exefile))
+
     return exefile
 
 #------------------------------------------------------------------------------
@@ -59,6 +71,8 @@ def get_python_output(abs_path, cwd = None):
 #------------------------------------------------------------------------------
 def compile_pyccel(path_dir,test_file, options = ""):
     if options != "":
+        if "python" in options:
+            options += " --output py"
         options = options.strip().split(' ')
         p = subprocess.Popen([shutil.which("pyccel"), "%s" % test_file] + options, universal_newlines=True, cwd=path_dir)
     else:
@@ -207,6 +221,8 @@ def pyccel_test(test_file, dependencies = None, compile_with_pyccel = True,
 
     if language:
         pyccel_commands += " --language="+language
+        if language == "python":
+            pyccel_commands += " --output py"
     else:
         language='fortran'
 
@@ -229,10 +245,13 @@ def pyccel_test(test_file, dependencies = None, compile_with_pyccel = True,
             dependencies = []
         if language=='fortran':
             compile_fortran(cwd, test_file, dependencies)
-        else:
+        elif language == 'c':
             compile_c(cwd, test_file, dependencies)
 
-    lang_out = get_lang_output(get_exe(test_file))
+    if language == "python":
+        lang_out = get_python_output(get_exe(test_file, language))
+    else:
+        lang_out = get_lang_output(get_exe(test_file, language))
     compare_pyth_fort_output(pyth_out, lang_out, output_dtype)
 
 #==============================================================================
@@ -280,9 +299,15 @@ def test_rel_imports_python_accessible_folder(language):
     language_opt = '--language={}'.format(language)
     compile_pyccel(os.path.join(path_dir, "folder2"), get_abs_path("scripts/folder2/folder2_funcs.py"), language_opt)
     compile_pyccel(path_dir, get_abs_path("scripts/folder2/runtest_rel_imports.py"), language_opt)
-
-    p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.folder2.runtest_rel_imports"],
+    if language == 'python':
+        src  = os.path.join(path_dir, os.path.normpath("folder2/py/folder2_funcs.py"))
+        dest = os.path.join(path_dir, os.path.normpath("py/folder2_funcs.py"))
+        shutil.copyfile(src, dest)
+        p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.py.runtest_rel_imports"],
             stdout=subprocess.PIPE, universal_newlines=True)
+    else:
+        p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.folder2.runtest_rel_imports"],
+                    stdout=subprocess.PIPE, universal_newlines=True)
     fort_out, _ = p.communicate()
     assert(p.returncode==0)
 
@@ -297,8 +322,21 @@ def test_imports_compile(language):
 #------------------------------------------------------------------------------
 @pytest.mark.xdist_incompatible
 def test_imports_in_folder(language):
-    pyccel_test("scripts/runtest_folder_imports.py","scripts/folder1/folder1_funcs.py",
-            compile_with_pyccel = False, language = language)
+    if language == 'python':
+        pyccel_commands = " --language="+language
+        pyccel_commands += " --output py"
+        dependencies = get_abs_path(os.path.normpath("scripts/folder1/folder1_funcs.py"))
+        compile_pyccel(os.path.dirname(dependencies), dependencies, pyccel_commands)
+        current_folder = os.path.dirname(os.path.realpath(__file__))
+        if os.path.exists(current_folder+"/scripts/py/folder1") is False:
+            os.mkdir(os.path.join(current_folder, os.path.normpath("scripts/py/folder1")))
+        src = os.path.join(current_folder,os.path.normpath("scripts/folder1/py/folder1_funcs.py"))
+        dest = os.path.join(current_folder, os.path.normpath("scripts/py/folder1/folder1_funcs.py"))
+        shutil.copyfile(src, dest)
+        pyccel_test("scripts/runtest_folder_imports.py", language = language)
+    else:
+        pyccel_test("scripts/runtest_folder_imports.py","scripts/folder1/folder1_funcs.py",
+                compile_with_pyccel = False, language = language)
 
 #------------------------------------------------------------------------------
 @pytest.mark.xdist_incompatible
@@ -323,8 +361,25 @@ def test_folder_imports_python_accessible_folder(language):
     compile_pyccel(path_dir, get_abs_path("scripts/folder2/runtest_imports2.py"),
             language_opt)
 
-    p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.folder2.runtest_imports2"],
+    if language == 'python':
+        if os.path.exists(os.path.join(path_dir, os.path.normpath("py/py"))) is False:
+            os.makedirs(os.path.join(path_dir, os.path.normpath("py/py")))
+
+        src  = os.path.join(path_dir, os.path.normpath("py/runtest_imports2.py"))
+        dest = os.path.join(path_dir, os.path.normpath("py/py/runtest_imports2.py"))
+        shutil.copyfile(src, dest)
+
+        if os.path.exists(os.path.join(path_dir, os.path.normpath("py/folder1"))) is False:
+            os.makedirs(os.path.join(path_dir, os.path.normpath("py/folder1")))
+
+        src  = os.path.join(path_dir, os.path.normpath("folder1/py/folder1_funcs.py"))
+        dest = os.path.join(path_dir, os.path.normpath("py/folder1/folder1_funcs.py"))
+        shutil.copyfile(src, dest)
+        p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.py.py.runtest_imports2"],
             stdout=subprocess.PIPE, universal_newlines=True)
+    else:
+        p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.folder2.runtest_imports2"],
+                stdout=subprocess.PIPE, universal_newlines=True)
     fort_out, _ = p.communicate()
     assert(p.returncode==0)
 
@@ -348,6 +403,8 @@ def test_folder_imports(language):
     compile_pyccel(os.path.join(path_dir,"folder2"), get_abs_path("scripts/folder2/runtest_imports2.py"),
             language_opt)
 
+    #if language == 'python':
+    #    os.makedirs(os.path.join(path_dir,os.path.normpath('py/py/folder1')))
     p = subprocess.Popen([sys.executable , "%s" % os.path.join(base_dir, "run_import_function.py"), "scripts.folder2.runtest_imports2"],
             stdout=subprocess.PIPE, universal_newlines=True)
     fort_out, _ = p.communicate()
@@ -375,8 +432,12 @@ def test_expressions(language):
             [complex, int, complex, complex, int, int, float] + [complex]*3 + \
             [float]*3 + [int] + [float]*2 + [int] + [float]*3 + [int] + \
             [float]*3 + [int]*2 + [float]*2 + [int]*5 + [complex] + [bool]*9
-    pyccel_test("scripts/expressions.py", language=language,
-                output_dtype = types)
+    if language == "python":
+        pyccel_test("scripts/expressions.py", language=language,
+            output_dtype = str)
+    else:
+        pyccel_test("scripts/expressions.py", language=language,
+            output_dtype = types)
 
 #------------------------------------------------------------------------------
 # See issue #756 for c problem
@@ -408,7 +469,10 @@ def test_pyccel_calling_directory(language):
     language_opt = '--language={}'.format(language)
     compile_pyccel(cwd, test_file, language_opt)
 
-    fort_out = get_lang_output(get_exe(test_file))
+    if language == "python":
+        fort_out = get_python_output(get_exe(test_file, language))
+    else:
+        fort_out = get_lang_output(get_exe(test_file))
 
     compare_pyth_fort_output( pyth_out, fort_out )
 
@@ -517,6 +581,14 @@ def test_multiple_results(language):
                 ,float,float,float,float], language=language)
 
 #------------------------------------------------------------------------------
+@pytest.mark.parametrize( 'language', (
+        pytest.param("c", marks = pytest.mark.c),
+        pytest.param("python", marks = [
+            pytest.mark.xfail(reason="Imports not working well in python : https://github.com/pyccel/pyccel/issues/873"),
+            pytest.mark.python]),
+        pytest.param("fortran", marks = pytest.mark.fortran)
+    )
+)
 def test_elemental(language):
     pyccel_test("scripts/decorators_elemental.py", language = language)
 
@@ -528,6 +600,9 @@ def test_print_strings(language):
 #------------------------------------------------------------------------------
 @pytest.mark.parametrize( 'language', (
         pytest.param("c", marks = pytest.mark.c),
+        pytest.param("python", marks = [
+            pytest.mark.xfail(reason="sep and end params not working in python : https://github.com/pyccel/pyccel/issues/874"),
+            pytest.mark.python]),
         pytest.param("fortran", marks = [
             pytest.mark.xfail(reason="formated string not implemented in fortran"),
             pytest.mark.fortran]
@@ -558,7 +633,7 @@ def test_headers(language):
     test_file = os.path.normpath(test_file)
     test_file = get_abs_path(test_file)
 
-    header_file = 'scripts/headers.pyh'
+    header_file = 'scripts/py/headers.pyh' if language == "python" else 'scripts/headers.pyh'
     header_file = os.path.normpath(header_file)
     header_file = get_abs_path(header_file)
 
@@ -585,9 +660,11 @@ def test_headers(language):
 
     compile_pyccel(cwd, test_file, pyccel_commands)
 
-
-    lang_out = get_lang_output(get_exe(test_file))
-    assert int(lang_out)
+    if language == "python":
+        lang_out = get_python_output(get_exe(test_file, language))
+    else:
+        lang_out = get_lang_output(get_exe(test_file, language))
+    assert int(lang_out) == 1
 
     with open(test_file, 'w') as f:
         code = ("from headers import f\n"
@@ -606,7 +683,10 @@ def test_headers(language):
 
     compile_pyccel(cwd, test_file, pyccel_commands)
 
-    lang_out = get_lang_output(get_exe(test_file))
+    if language == "python":
+        lang_out = get_python_output(get_exe(test_file, language))
+    else:
+        lang_out = get_lang_output(get_exe(test_file, language))
     assert float(lang_out) == 1.5
 
     with open(test_file, 'w') as f:
