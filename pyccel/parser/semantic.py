@@ -83,6 +83,7 @@ from pyccel.ast.builtins import (PythonRange, PythonZip, PythonEnumerate,
 
 from pyccel.ast.numpyext import NumpyZeros, NumpyMatmul
 from pyccel.ast.numpyext import NumpyBool
+from pyccel.ast.numpyext import NumpyWhere
 from pyccel.ast.numpyext import NumpyInt, NumpyInt8, NumpyInt16, NumpyInt32, NumpyInt64
 from pyccel.ast.numpyext import NumpyFloat, NumpyFloat32, NumpyFloat64
 from pyccel.ast.numpyext import NumpyComplex, NumpyComplex64, NumpyComplex128
@@ -1010,6 +1011,13 @@ class SemanticParser(BasicParser):
             for a in kwargs.values():
                 if getattr(a,'dtype',None) == 'tuple':
                     self._infere_type(a, **settings)
+
+            if func is NumpyWhere:
+                if len(args) != 3:
+                    errors.report(INVALID_WHERE_ARGUMENT,
+                        symbol=func, blocker=True,
+                        severity='fatal')
+
             new_expr = func(*args, **kwargs)
 
             return new_expr
@@ -1347,7 +1355,6 @@ class SemanticParser(BasicParser):
             raise NotImplementedError("_assign_lhs_variable does not handle {}".format(str(type(lhs))))
 
         return lhs
-
 
     #====================================================
     #                 _visit functions
@@ -1852,7 +1859,6 @@ class SemanticParser(BasicParser):
         new_expressions = []
         fst = expr.fst
         assert(fst)
-
         rhs = expr.rhs
         lhs = expr.lhs
 
@@ -1939,7 +1945,7 @@ class SemanticParser(BasicParser):
             rhs = self._visit(rhs, **settings)
 
         if isinstance(rhs, FunctionDef):
-
+            print("test here ;", rhs)
             # case of lambdify
 
             rhs = rhs.rename(expr.lhs.name)
@@ -1949,6 +1955,7 @@ class SemanticParser(BasicParser):
             return rhs
 
         elif isinstance(rhs, CodeBlock):
+            print("test here 2;", rhs)
             if len(rhs.body)>1 and isinstance(rhs.body[1], FunctionalFor):
                 return rhs
 
@@ -1975,7 +1982,7 @@ class SemanticParser(BasicParser):
             return CodeBlock(stmts)
 
         elif isinstance(rhs, FunctionCall):
-
+            print("test here 3;", rhs)
             func = rhs.funcdef
             if isinstance(func, FunctionDef):
                 results = func.results

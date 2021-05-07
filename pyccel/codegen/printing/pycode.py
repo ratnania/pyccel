@@ -448,7 +448,7 @@ class PythonCodePrinter(CodePrinter):
         return "linspace({0}, {1}, {2})".format(
                 self._print(expr.start),
                 self._print(expr.stop),
-                self._print(expr.size))
+                self._print(expr.num))
 
     def _print_NumpyMatmul(self, expr):
         return "matmul({0}, {1})".format(

@@ -723,25 +723,24 @@ class FCodePrinter(CodePrinter):
     def _print_NumpyLinspace(self, expr):
 
         template = '[({start} + {index}*{step},{index} = {zero},{end})]'
-
+        var = Variable('int', 'linspace_index')
+        self.add_vars_to_namespace(var)
         init_value = template.format(
             start = self._print(expr.start),
             step  = self._print(expr.step ),
             index = self._print(expr.index),
             zero  = self._print(LiteralInteger(0)),
-            end   = self._print(PyccelMinus(expr.size, LiteralInteger(1), simplify = True)),
+            end   = self._print(PyccelMinus(expr.num, LiteralInteger(1), simplify = True)),
         )
         code = init_value
 
         return code
 
     def _print_NumpyWhere(self, expr):
-
-        ind   = self._print(expr.index)
-        mask  = self._print(expr.mask)
-
-        stmt  = 'pack([({ind},{ind}=0,size({mask})-1)],{mask})'.format(ind=ind,mask=mask)
-
+        condition  = self._print(expr.condition)
+        x = self._print(expr.x)
+        y = self._print(expr.y)
+        stmt = 'merge({true}, {false}, {cond})'.format(true=x,false=y,cond=condition)
         return stmt
 
     def _print_NumpyArray(self, expr):

@@ -550,26 +550,40 @@ class NumpyLinspace(NumpyNewArray):
     Represents numpy.linspace.
 
     """
-    __slots__ = ('_index','_start','_stop','_size','_shape', '_rank')
-    _dtype     = NativeReal()
-    _precision = default_precision['real']
+    __slots__ = ('_dtype','_precision','_index','_start','_stop','_num','_shape', '_rank')
     _order     = 'F'
 
-    def __init__(self, start, stop, size):
+    def __init__(self, start, stop, num=None):
 
+        if not num:
+            num = LiteralInteger(50)
 
-        _valid_args = (Variable, IndexedElement, LiteralFloat,
-                       LiteralInteger)
-
-        for arg in (start, stop, size):
-            if not isinstance(arg, _valid_args):
+        for arg in (start, stop, num):
+            if not isinstance(arg, PyccelAstNode):
                 raise TypeError('Expecting valid args')
+
+        args      = (start, stop)
+        integers  = [e for e in args if e.dtype is NativeInteger()]
+        reals     = [e for e in args if e.dtype is NativeReal()]
+        complexs  = [e for e in args if e.dtype is NativeComplex()]
+
+        if complexs:
+            self._dtype     = NativeComplex()
+            self._precision = max(e.precision for e in complexs)
+        elif reals:
+            self._dtype     = NativeReal()
+            self._precision = max(e.precision for e in reals)
+        elif integers:
+            self._dtype     = NativeReal()
+            self._precision = default_precision['real']
+        else:
+            raise TypeError('cannot determine the type of {}'.format(self))
 
         self._index = Variable('int', 'linspace_index')
         self._start = start
         self._stop  = stop
-        self._size  = size
-        self._shape = (self._size,) + self._start.shape
+        self._num  = num
+        self._shape = (self._num,) + self._start.shape
         self._rank  = len(self._shape)
         super().__init__()
 
@@ -582,8 +596,9 @@ class NumpyLinspace(NumpyNewArray):
         return self._stop
 
     @property
-    def size(self):
-        return self._size
+    def num(self):
+        """Represent the number of generated elements by the linspace function."""
+        return self._num
 
     @property
     def index(self):
@@ -591,34 +606,73 @@ class NumpyLinspace(NumpyNewArray):
 
     @property
     def step(self):
-        return (self.stop - self.start) / (self.size - 1)
+        return PyccelDiv(PyccelMinus(self.stop, self.start), PyccelMinus(self.num, LiteralInteger(1)))
 
     def __str__(self):
         code = 'linspace({}, {}, {})'.format(str(self.start),
                                              str(self.stop),
-                                             str(self.size))
+                                             str(self.num))
         return code
 
 #==============================================================================
 class NumpyWhere(PyccelInternalFunction):
     """ Represents a call to  numpy.where """
-    __slots__ = ()
+    __slots__ = ('_condition', '_x', '_y', '_dtype', '_rank', '_shape', '_order', '_precision')
+    _attribute_nodes = ('_condition','_x','_y')
 
-    def __init__(self, mask):
-        super().__init__(mask)
+    def __init__(self, condition, x, y):
+        self._condition = condition
+        self._x = x
+        self._y = y
 
+        args      = (x, y)
+        integers  = [e for e in args if e.dtype is NativeInteger() or e.dtype is NativeBool()]
+        reals     = [e for e in args if e.dtype is NativeReal()]
+        complexs  = [e for e in args if e.dtype is NativeComplex()]
+
+        if complexs:
+            self._dtype     = NativeComplex()
+            self._precision = max(e.precision for e in complexs)
+        elif reals:
+            self._dtype     = NativeReal()
+            self._precision = max(e.precision for e in reals)
+        elif integers:
+            self._dtype     = NativeInteger()
+            self._precision = max(e.precision for e in integers)
+        else:
+            raise TypeError('cannot determine the type of {}'.format(self))
+
+        shape = broadcast(x._shape, y._shape)
+        shape = broadcast(condition._shape, shape)
+
+        self._rank = len(shape)
+        self._shape = shape
+        self._order = 'C'
+        super().__init__(condition, x, y)
 
     @property
-    def mask(self):
-        return self._args[0]
+    def condition(self):
+        """When True, yield x, otherwise yield y."""
+        return self._condition
 
     @property
-    def index(self):
-        ind = Variable('int','ind1')
+    def x(self):
+        """Choose when the condition is evaluated to True."""
+        return self._x
 
-        return ind
+    @property
+    def y(self):
+        """Choose when the condition is evaluated to False."""
+        return self._y
 
- #==============================================================================
+    @property
+    def is_elemental(self):
+        """ Indicates whether the function should be
+        called elementwise for an array argument
+        """
+        return True
+
+#==============================================================================
 class NumpyRand(PyccelInternalFunction):
 
     """
