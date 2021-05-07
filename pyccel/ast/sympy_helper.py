@@ -11,7 +11,7 @@ by providing translations between the sympy representation and the pyccel nodes
 import sympy as sp
 from sympy.core.numbers import One, NegativeOne, Zero, Half
 
-from .operators import PyccelAdd, PyccelMul, PyccelPow, PyccelUnarySub
+from .operators import PyccelAdd, PyccelMul, PyccelPow, PyccelUnarySub, PyccelFloorDiv
 from .operators import PyccelDiv, PyccelMinus, PyccelAssociativeParenthesis
 from .core      import create_incremented_string
 
@@ -168,6 +168,10 @@ def pyccel_to_sympy(expr, symbol_map, used_names):
 
     elif isinstance(expr, MathCeil):
         return sp.ceiling(pyccel_to_sympy(expr.args[0], symbol_map, used_names))
+
+    elif isinstance(expr, PyccelFloorDiv):
+        args = [pyccel_to_sympy(e, symbol_map, used_names) for e in expr.args]
+        return args[0] // args[1]
 
     elif expr in symbol_map.values():
         return list(symbol_map.keys())[list(symbol_map.values()).index(expr)]

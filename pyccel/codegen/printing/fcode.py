@@ -1870,6 +1870,56 @@ class FCodePrinter(CodePrinter):
                 '{body}'
                 '{epilog}').format(prolog=prolog, body=body, epilog=epilog)
 
+    def _print_Task(self, expr):
+
+        inputs  = expr.inputs
+        outputs = tuple(i for i, v in expr.outputs.items() if v is True)
+        shareds = expr.shareds
+
+        inputs  = ' depend(in:{})'.format(','.join(a.name for a in inputs)) if inputs else ''
+        outputs = ' depend(out:{})'.format(','.join(a.name for a in outputs)) if outputs else ''
+        shareds = ' shared({})'.format(', '.join(a.name for a in shareds)) if shareds else ''
+
+        code = ('!$omp task{shareds}{inputs}{outputs}\n'
+               '{statement}'
+               '!$omp end task\n'
+               '{should_wait}\n').format(shareds = shareds,
+                                       inputs = inputs,
+                                       outputs = outputs,
+                                       statement = self._print(expr.stmt),
+                                       should_wait = '!$omp taskwait' if expr.should_wait else '')
+        return code
+
+    def _print_TaskMaster(self, expr):
+        threads_num = ' num_threads({})'.format(self._print(expr.num_threads.python_value)) if expr.num_threads else ''
+
+        code = ('!$omp parallel{threads_num}\n'
+                '!$omp single\n'
+                '{statement}'
+                '!$omp end single\n'
+                '!$omp end parallel\n').format(threads_num = threads_num, statement = self._print(expr.stmt))
+
+        return code
+        # resolve duplicated variables
+        #outputs = [a if a not in inputs else inouts.append(a) for a in expr.outputs.keys()] if expr.outputs.keys() else None
+        #inputs = [a for a in inputs if a not in inouts] if inputs else None
+
+        #printing
+        #outputs = 'out:{}'.format(','.join(self._print(a) for a in outputs)) if outputs else ''
+        #inputs = 'in:{}'.format(','.join(self._print(a) for a in inputs)) if inputs else ''
+        #inouts = 'inout:{}'.format(','.join(self._print(a) for a in inouts)) if inouts else ''
+
+        #depend = 'depend {}'.format(outputs + inputs + inouts) if inputs or outputs or inouts else ''
+        #should_wait = '!$omp taskwait\n' if expr.should_wait else ''
+
+        #start_task = "!$omp task {}\n".format(depend)
+        #structured_code_block = self._print(expr.stmt)
+        #end_task = "!$omp end task\n"
+
+
+        #code = '{}'.format(start_task + structured_code_block + end_task + should_wait)
+        #return code
+
     # .....................................................
     #               Print OpenMP AnnotatedComment
     # .....................................................

@@ -150,6 +150,8 @@ class Scope(object):
         self._symbolic_functions = OrderedDict()
         self._python_functions   = OrderedDict()
 
+        self._tasks              = []
+
         self._is_loop = False
         # scoping for loops
         self._loops = []
@@ -246,6 +248,11 @@ class Scope(object):
     def loops(self):
         return self._loops
 
+    @property
+    def tasks(self):
+        """
+        """
+        return self._tasks
 
 
 

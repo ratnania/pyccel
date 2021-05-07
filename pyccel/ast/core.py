@@ -3821,6 +3821,64 @@ class ParserResult(Basic):
         mod_name  = self.mod_name)
         return (apply, (self.__class__, (), kwargs))
 
+
+class TaskFunctionCall(FunctionCall):
+    pass
+
+class Task(Basic):
+    """
+    """
+    __slots__ = ('_stmt','_inputs','_outputs','_preceders', '_shareds', '_should_wait')
+    _attribute_nodes = ('_stmt','_inputs','_preceders')
+
+    def __init__(self, stmt, inputs = (), outputs = dict(), shareds = set(), preceders = ()):
+        self._stmt        = stmt
+        self._inputs      = inputs
+        self._outputs     = outputs
+        self._preceders   = preceders
+        self._shareds     = shareds
+        self._should_wait = False
+        super().__init__()
+
+    @property
+    def stmt(self):
+        return self._stmt
+
+    @property
+    def inputs(self):
+        return self._inputs
+
+    @property
+    def outputs(self):
+        return self._outputs
+
+    @property
+    def preceders(self):
+        return self._preceders
+
+    @property
+    def shareds(self):
+        return self._shareds
+
+    @property
+    def should_wait(self):
+        return self._should_wait
+
+    @should_wait.setter
+    def should_wait(self, value):
+        self._should_wait = value
+
+class TaskMaster(Task):
+    __slots__ = ('_num_threads',)
+
+    def __init__(self, num_threads, *args, **kwargs):
+        self._num_threads = num_threads
+        super().__init__(*args, **kwargs)
+
+    @property
+    def num_threads(self):
+        return self._num_threads
+
 #==============================================================================
 def process_shape(shape):
     if not hasattr(shape,'__iter__'):
